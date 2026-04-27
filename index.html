@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>皇者書院</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Zhi+Mang+Xing&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="img/equip02669a3dc.png" type="image/png">
+
+</head>
+
+<body>
+    <div id="app" :class="{ 'sidebar-open': isSidebarOpen }">
+        <div class="sidebar-overlay" :class="{ 'show': isSidebarOpen }" @click="isSidebarOpen = false"></div>
+        <nav class="top-nav">
+            <div class="hamburger-btn" :class="{ 'open': isSidebarOpen }" @click="isSidebarOpen = !isSidebarOpen">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="nav-logo" @click="resetToHome">皇者書院</div>
+        </nav>
+
+        <aside class="sidebar" :class="{ 'open': isSidebarOpen }">
+
+            <nav class="sidebar-nav">
+                <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat.id)"
+                    :class="['sidebar-item', { active: currentCategory === cat.id }]">
+                    {{ cat.name }}
+                </button>
+                <div class="sidebar-divider"></div>
+                <button class="sidebar-item" :class="{ active: currentCategory === 'disclaimer' }" @click="selectCategory('disclaimer')">
+                    🛡️ 免責聲明
+                </button>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="container">
+                <div v-if="initError" class="loader" style="color: var(--primary-red)">
+            <p>軍報讀取失敗，請確認檔案路徑或伺服器狀態。</p>
+        </div>
+
+        <template v-else>
+            <div v-if="currentCategory === 'disclaimer'" class="disclaimer-container">
+                <div class="disclaimer-header">
+                    <h1>免責聲明</h1>
+                </div>
+                <div class="disclaimer-content">
+                    <p>歡迎訪問「皇者書院」（以下簡稱「本站」）。在您使用本站提供的資訊前，請務必仔細閱讀並透徹理解本聲明。</p>
+                    
+                    <h2>一、 資訊來源與準確性</h2>
+                    <p>1. 本站為非官方性質的數據研究與交流平台，所收錄之遊戲數據、圖片、文字等資訊，均來自於公開網路資訊或使用者提供。</p>
+                    <p>2. 由於遊戲版本更新頻繁，本站無法保證所有資訊的即時性與絕對準確性。本站提供的資訊僅供參考，實際遊戲內容請以官方發布之最新版本為準。</p>
+
+                    <h2>二、 知識產權說明</h2>
+                    <p>1. 本站展示的所有遊戲相關素材之知識產權均歸原遊戲開發商與發行商所有。本站僅出於學習研究之目的使用，無意侵犯任何版權。</p>
+                    <p>2. 如相關權利人認為本站內容侵犯其合法權益，請及時與我們聯繫，本站將配合刪除。</p>
+
+                    <h2>三、 責任限制</h2>
+                    <p>1. 本站對因使用本站資訊而產生的任何損失不承擔法律責任。對於不可抗力導致的服務中斷，本站不承擔賠償責任。</p>
+
+                    <h2>四、 禁止商業用途</h2>
+                    <p>本站內容嚴禁用於任何營利性或非法商業活動。違規使用產生的一切後果由使用者自行承擔。</p>
+
+
+                </div>
+            </div>
+
+            <div v-else>
+                <div class="controls">
+                <div class="search-box">
+                    <input type="text" v-model="searchQuery" placeholder="搜尋武將、裝備或道具名稱...">
+                    <div class="select-row">
+                        <select class="merge-select category-select" v-model="tagFilter">
+                            <option value="ALL">類別</option>
+                            <option v-for="t in uniqueTags" :key="t" :value="t">{{ t }}</option>
+                        </select>
+                        <select class="merge-select" v-model="mergeFilter">
+                            <option value="ALL">開放時機</option>
+                            <option :value="0">開服</option>
+                            <option v-for="n in 8" :key="n" :value="n">{{ n }}合</option>
+                        </select>
+                        <select class="merge-select" v-model="sourceFilter">
+                            <option value="ALL">取得來源</option>
+                            <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
+                        </select>
+                        <select class="merge-select" v-model="setFilter">
+                            <option value="ALL">完整套裝</option>
+                            <option v-for="s in uniqueSets" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
+                </div>
+
+                <nav class="filter-nav" style="display: none;">
+                    <button v-for="cat in categories" :key="cat.id" @click="currentCategory = cat.id"
+                        :class="['filter-btn', { active: currentCategory === cat.id }]">
+                        {{ cat.name }}
+                    </button>
+                </nav>
+            </div>
+
+            <div v-if="loading" class="loader">
+                <div class="loader-icon"></div>
+                <p style="letter-spacing: 0.5rem; color: var(--primary-gold);">正在讀取三國卷軸...</p>
+            </div>
+
+            <div v-else class="gallery">
+                <div v-for="(item, index) in filteredItems" :key="item.name + '-' + index" class="card" @click="selectedItem = item">
+                    <div :class="['tag', 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
+                    <div class="release-tag" v-if="item.release !== undefined">{{ formatRelease(item.release) }}</div>
+                    <div class="source-tag" v-if="item.source">{{ item.source }}</div>
+                    <img :src="item.image ? 'img/' + item.image : 'img/unknown.png'" :alt="item.name" loading="lazy"
+                        :class="{'hero-img': item.group === 'hero'}">
+                    <div class="card-info">
+                        <div class="card-name">{{ item.name }}</div>
+                        <div class="card-attr" v-if="item.attr && typeof item.attr === 'string'">{{ item.attr }}</div>
+                        <div class="card-tags">
+                            <span v-for="c in (item.category ? item.category.split(' ') : [])" :key="c" class="mini-tag">{{ c }}</span>
+                            <span v-for="s in (item.sets ? item.sets.split(' ') : [])" :key="s" class="mini-tag">{{ s }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+
+            <!-- Detail Modal -->
+            <teleport to="body">
+                <div v-if="selectedItem" class="modal-overlay" @click.self="selectedItem = null">
+                    <div class="modal-content" :class="{ 'hero-modal': selectedItem.talentName, 'activity-modal': selectedItem.group === 'act' }">
+
+                        <div class="close-btn" @click="selectedItem = null">✕</div>
+
+
+                        <!-- Activity Detail Panel -->
+                        <template v-if="selectedItem.group === 'act'">
+                            <div class="activity-detail-panel">
+                                <div class="activity-header">
+                                    <div class="modal-title">{{ selectedItem.name }}</div>
+                                    <div class="card-tags" style="justify-content: center; margin-bottom: 8px;">
+                                        <span v-for="tag in selectedItem.category" :key="tag" class="mini-tag" style="padding: 4px 12px; font-size: 0.9rem;">{{ tag }}</span>
+                                    </div>
+                                    <div class="equip-release" v-if="selectedItem.release !== undefined" style="text-align: center; margin-bottom: 5px; opacity: 0.8;">開放時機: {{ formatRelease(selectedItem.release) }}</div>
+                                    <div class="equip-source" v-if="selectedItem.source" style="text-align: center; margin-bottom: 15px; color: var(--accent-gold); font-size: 0.9rem;">取得來源: {{ selectedItem.source }}</div>
+                                </div>
+
+
+
+                                <div v-if="selectedItem.table" class="activity-table-container">
+                                    <div class="activity-table-title" v-if="selectedItem.table.title">{{ selectedItem.table.title }}</div>
+                                    <table class="complex-table">
+                                        <thead>
+                                            <tr>
+                                                <th v-for="col in selectedItem.table.columns" :key="col">{{ col }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(row, ridx) in activityTable" :key="ridx">
+                                                <template v-for="(cell, cidx) in row" :key="cidx">
+                                                    <td v-if="cell.show" 
+                                                        :rowspan="cell.rowspan" 
+                                                        :data-label="selectedItem.table.columns[cidx]">
+                                                        {{ cell.value }}
+                                                    </td>
+                                                </template>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+
+                                </div>
+                                
+                                <div v-if="selectedItem.info" class="activity-info-box">
+                                    {{ selectedItem.info }}
+                                </div>
+                            </div>
+                        </template>
+                        <template v-else>
+
+                            <div class="modal-details equip-panel">
+                                <div class="equip-header">
+                                    <img :src="selectedItem.image ? 'img/' + selectedItem.image : 'img/unknown.png'" alt="Preview" class="equip-img">
+                                    <div class="equip-info-top">
+                                        <div class="equip-title-row">
+                                            <div class="modal-title">{{ selectedItem.name }}</div>
+                                            <div class="card-tags" style="margin-top: 0; flex-wrap: wrap;">
+                                                <span v-for="c in (selectedItem.category ? selectedItem.category.split(' ') : [])" :key="c" class="mini-tag"
+                                                    style="font-size: 0.8rem; padding: 2px 8px;">{{ c }}</span>
+                                                <span v-for="s in (selectedItem.sets ? selectedItem.sets.split(' ') : [])" :key="s" class="mini-tag"
+                                                    style="font-size: 0.8rem; padding: 2px 8px;">{{ s }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="modal-attr" v-if="selectedItem.attr">{{ selectedItem.attr }}</div>
+                                        <div class="equip-release" v-if="selectedItem.release !== undefined">開放時機: {{ formatRelease(selectedItem.release) }}</div>
+                                        <div class="equip-notes" v-if="selectedItem.notes" style="color: #ff6b6b; font-size: 0.85rem; margin-top: 4px;">備註: {{ selectedItem.notes }}</div>
+                                        <div class="equip-source" v-if="selectedItem.source">取得來源: {{ selectedItem.source }}</div>
+                                    </div>
+                                </div>
+                                <div v-if="selectedItem.effects && selectedItem.effects.length" class="effects-section">
+                                    <ul class="effects-list">
+                                        <li v-for="(eff, idx) in selectedItem.effects" :key="idx" class="effect-item">
+                                            {{ eff }}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </teleport>
+                </template>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const loading = ref(true);
+                const initError = ref(false);
+                const currentCategory = ref('equip');
+                const searchQuery = ref('');
+                const mergeFilter = ref('ALL');
+                const sourceFilter = ref('ALL');
+                const setFilter = ref('ALL');
+                const tagFilter = ref('ALL');
+                const selectedItem = ref(null);
+                const isSidebarOpen = ref(window.innerWidth > 768);
+                const showDisclaimer = ref(false);
+                const categories = ref([]);
+                const allItems = ref([]);
+
+                const setMergeFilter = (val) => {
+                    mergeFilter.value = val;
+                };
+
+                const selectCategory = (catId) => {
+                    currentCategory.value = catId;
+                    if (window.innerWidth <= 768) {
+                        isSidebarOpen.value = false;
+                    }
+                };
+
+                const resetToHome = () => {
+                    currentCategory.value = 'equip';
+                    searchQuery.value = '';
+                    tagFilter.value = 'ALL';
+                    mergeFilter.value = 'ALL';
+                    sourceFilter.value = 'ALL';
+                    setFilter.value = 'ALL';
+                    if (window.innerWidth <= 768) {
+                        isSidebarOpen.value = false;
+                    }
+                };
+
+                const fetchData = async () => {
+                    try {
+                        const catRes = await fetch('data/categories.json');
+                        categories.value = await catRes.json();
+
+                        const loadTasks = categories.value.map(async (cat) => {
+                            try {
+                                const res = await fetch(`data/${cat.id}.json`);
+                                const data = await res.json();
+                                // Normalize data
+                                return data.map(val => {
+                                    if (typeof val === 'string') {
+                                        return {
+                                            name: val.replace(/\.[^/.]+$/, ""),
+                                            image: val,
+                                            group: cat.id,
+                                            attr: '',
+                                            category: '',
+                                            sets: '',
+                                            tags: []
+                                        };
+                                    }
+                                    return { ...val, group: cat.id };
+                                });
+                            } catch (e) {
+                                console.warn(`Could not load data for category: ${cat.id}`);
+                                return [];
+                            }
+                        });
+
+                        const results = await Promise.all(loadTasks);
+                        allItems.value = results.flat();
+                        loading.value = false;
+                    } catch (err) {
+                        console.error(err);
+                        initError.value = true;
+                        loading.value = false;
+                    }
+                };
+
+                const uniqueSources = computed(() => {
+                    const list = allItems.value.filter(item => item.group === currentCategory.value);
+                    const sources = list.map(item => item.source).filter(Boolean);
+                    return [...new Set(sources)].sort();
+                });
+
+                const uniqueSets = computed(() => {
+                    const list = allItems.value.filter(item => item.group === currentCategory.value);
+                    const setMap = {};
+                    list.forEach(item => {
+                        if (item.sets) {
+                            item.sets.split(' ').forEach(s => {
+                                const rel = item.release !== undefined ? item.release : 99;
+                                if (setMap[s] === undefined || rel < setMap[s]) {
+                                    setMap[s] = rel;
+                                }
+                            });
+                        }
+                    });
+                    return Object.keys(setMap).sort((a, b) => {
+                        if (setMap[a] !== setMap[b]) return setMap[a] - setMap[b];
+                        return a.localeCompare(b, 'zh-TW');
+                    });
+                });
+
+                const uniqueTags = computed(() => {
+                    const list = allItems.value.filter(item => item.group === currentCategory.value);
+                    const tagsSet = new Set();
+                    list.forEach(item => {
+                        if (item.category) {
+                            item.category.split(' ').forEach(c => {
+                                const trimmed = c.trim();
+                                if (trimmed) {
+                                    tagsSet.add(trimmed);
+                                }
+                            });
+                        }
+                    });
+                    return [...tagsSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+                });
+
+                const filteredItems = computed(() => {
+                    let list = allItems.value.filter(item => item.group === currentCategory.value);
+                    
+                    // Open Merge Filter (Implicit)
+                    if (mergeFilter.value !== 'ALL') {
+                        list = list.filter(item => item.release === parseInt(mergeFilter.value));
+                    }
+
+                    // Source Filter
+                    if (sourceFilter.value !== 'ALL') {
+                        list = list.filter(item => item.source === sourceFilter.value);
+                    }
+
+                    // Set Filter
+                    if (setFilter.value !== 'ALL') {
+                        list = list.filter(item => item.sets && item.sets.split(' ').includes(setFilter.value));
+                    }
+
+                    // Tag Filter
+                    if (tagFilter.value !== 'ALL') {
+                        list = list.filter(item => item.category && item.category.split(' ').some(c => c.trim() === tagFilter.value.trim()));
+                    }
+
+                    if (searchQuery.value.trim()) {
+                        const keywords = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean);
+                        list = list.filter(item => {
+                            const haystack = [
+                                item.name,
+                                item.image,
+                                ...(item.category || []),
+                                ...(item.sets || []),
+                                item.attr || '',
+                                item.notes || '',
+                                ...(item.effects || [])
+                            ].join(' ').toLowerCase();
+                            return keywords.every(kw => haystack.includes(kw));
+                        });
+                    }
+                    return list;
+                });
+
+                const getCardTag = (item) => {
+                    const cats = item.category ? item.category.split(' ') : [];
+                    if (cats.includes('良才')) return '良才';
+                    if (cats.includes('國士')) return '國士';
+                    if (cats.includes('巾幗')) return '巾幗';
+                    if (cats.includes('名將')) return '名將';
+                    if (cats.includes('傳奇')) return '傳奇';
+                    if (item.group === 'equip') return '裝備';
+                    return '道具';
+                };
+
+                const formatRelease = (val) => {
+                    if (val === 0 || val === '0') return '開服';
+                    if (val > 0 && val <= 8) return val + '合';
+                    return val;
+                };
+
+                const activityTable = computed(() => {
+                    if (!selectedItem.value || !selectedItem.value.table) return [];
+                    const rows = selectedItem.value.table.rows;
+                    const result = [];
+                    
+                    for (let ridx = 0; ridx < rows.length; ridx++) {
+                        const rowData = [];
+                        for (let cidx = 0; cidx < rows[ridx].length; cidx++) {
+                            const value = rows[ridx][cidx];
+                            const show = ridx === 0 || rows[ridx][cidx] !== rows[ridx - 1][cidx];
+                            let rowspan = 1;
+                            if (show) {
+                                for (let k = ridx + 1; k < rows.length; k++) {
+                                    if (rows[k][cidx] === value) rowspan++;
+                                    else break;
+                                }
+                            }
+                            rowData.push({ value, show, rowspan });
+                        }
+                        result.push(rowData);
+                    }
+                    return result;
+                });
+
+                watch(selectedItem, (newVal) => {
+                    if (newVal) {
+                        document.body.classList.add('no-scroll');
+                    } else {
+                        document.body.classList.remove('no-scroll');
+                    }
+                });
+
+                onMounted(fetchData);
+
+                return {
+                    categories,
+                    currentCategory,
+                    searchQuery,
+                    selectedItem,
+                    filteredItems,
+                    loading,
+                    initError,
+                    getCardTag,
+                    setMergeFilter,
+                    mergeFilter,
+                    sourceFilter,
+                    setFilter,
+                    tagFilter,
+                    uniqueSources,
+                    uniqueSets,
+                    uniqueTags,
+                    formatRelease,
+                    activityTable,
+                    isSidebarOpen,
+                    showDisclaimer,
+                    selectCategory,
+                    resetToHome
+                };
+
+            }
+        }).mount('#app');
+    </script>
+</body>
+
+</html>
