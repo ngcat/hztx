@@ -5,9 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>皇者書院</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap"
-        rel="stylesheet">
+    <meta name="description" content="《皇者天下》非官方資訊站。提供玩家交流、最專業的武將、技能與裝備資訊，並包含配裝模擬器與最新數據查詢。">
+    <meta name="keywords" content="皇者天下, 皇者天下攻略, 裝備資訊, 武將技能, 配裝模擬">
+
+    <!-- Open Graph / Facebook / LINE -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="皇者書院">
+    <meta property="og:description" content="《皇者天下》非官方資訊站。提供玩家交流、最專業的武將、技能與裝備資訊，並包含配裝模擬器與最新數據查詢。">
+    <meta property="og:image" content="img/og-preview.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=1.1">
     <link rel="stylesheet" href="css/equipment-list.css?v=1.1">
     <link rel="stylesheet" href="css/simulator.css?v=1.1">
@@ -36,14 +45,16 @@
                 </button>
 
                 <!-- 配裝模擬 -->
-                <button class="sidebar-item" :class="{ active: currentCategory === 'sim' }" @click="selectCategory('sim')">
+                <button class="sidebar-item" :class="{ active: currentCategory === 'sim' }"
+                    @click="selectCategory('sim')">
                     🧪 配裝模擬
                 </button>
 
                 <div class="sidebar-divider"></div>
 
                 <!-- 免責聲明 -->
-                <button class="sidebar-item" :class="{ active: currentCategory === 'disclaimer' }" @click="selectCategory('disclaimer')">
+                <button class="sidebar-item" :class="{ active: currentCategory === 'disclaimer' }"
+                    @click="selectCategory('disclaimer')">
                     🛡️ 免責聲明
                 </button>
             </nav>
@@ -56,14 +67,15 @@
                 </div>
 
                 <template v-else>
-                        <div v-if="loading" class="loader">
-                            <div class="loader-icon"></div>
-                            <p class="loader-text">正在讀取三國卷軸...</p>
-                        </div>
+                    <div v-if="loading" class="loader">
+                        <div class="loader-icon"></div>
+                        <p class="loader-text">正在讀取三國卷軸...</p>
+                    </div>
 
                     <template v-else>
                         <keep-alive>
-                            <div v-if="currentCategory === 'disclaimer'" :key="'disclaimer'" class="disclaimer-container">
+                            <div v-if="currentCategory === 'disclaimer'" :key="'disclaimer'"
+                                class="disclaimer-container">
                                 <div class="disclaimer-header">
                                     <h1>免責聲明</h1>
                                 </div>
@@ -82,9 +94,11 @@
                                 </div>
                             </div>
 
-                            <simulator-component v-else-if="currentCategory === 'sim'" :key="'sim'" :all-items="allItems"></simulator-component>
+                            <simulator-component v-else-if="currentCategory === 'sim'" :key="'sim'"
+                                :all-items="allItems"></simulator-component>
 
-                            <equipment-list v-else :key="'equip'" :all-items="allItems" :category="currentCategory"></equipment-list>
+                            <equipment-list v-else :key="'equip'" :all-items="allItems"
+                                :category="currentCategory"></equipment-list>
                         </keep-alive>
                     </template>
                 </template>
