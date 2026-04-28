@@ -2,7 +2,8 @@ const { createApp, ref, computed, onMounted, watch } = Vue;
 
 createApp({
     components: {
-        'equipment-list': EquipmentListComponent
+        'equipment-list': EquipmentListComponent,
+        'simulator-component': SimulatorComponent
     },
     setup() {
         // --- 基礎狀態 ---
@@ -54,22 +55,52 @@ createApp({
             }
         };
 
-        // --- 導覽功能 ---
+        // --- 路由功能 ---
+        const handleRouting = () => {
+            const hash = window.location.hash.replace('#', '');
+            const hasConfig = window.location.search.includes('c=') || window.location.hash.includes('c=');
+            
+            // 優先級：明確的 Hash > 分享參數
+            if (hash.startsWith('sim')) {
+                currentCategory.value = 'sim';
+            } else if (hash === 'disclaimer') {
+                currentCategory.value = 'disclaimer';
+            } else if (hash === 'equip') {
+                currentCategory.value = 'equip';
+            } else if (!hash && hasConfig) {
+                // 只有在首頁且帶有配置時，才強制進入模擬器
+                currentCategory.value = 'sim';
+            } else {
+                // 處理其他數據分類
+                const validCategory = categories.value.find(c => c.id === hash);
+                if (validCategory) {
+                    currentCategory.value = hash;
+                } else {
+                    currentCategory.value = 'equip'; // 預設回裝備
+                }
+            }
+        };
+
         const selectCategory = (catId) => {
-            currentCategory.value = catId;
+            window.location.hash = catId;
             if (window.innerWidth <= 768) {
                 isSidebarOpen.value = false;
             }
         };
 
         const resetToHome = () => {
-            currentCategory.value = 'equip';
+            window.location.hash = 'equip';
             if (window.innerWidth <= 768) {
                 isSidebarOpen.value = false;
             }
         };
 
-        onMounted(fetchData);
+        onMounted(() => {
+            fetchData().then(() => {
+                handleRouting();
+            });
+            window.addEventListener('hashchange', handleRouting);
+        });
 
         return {
             loading, initError, currentCategory,

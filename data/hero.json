@@ -1,0 +1,1267 @@
+[
+    {
+        "name":  "公孫瓚",
+        "image":  "hero7000543b08.png",
+        "release":  6,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "張仲景",
+        "image":  "hero7001a20b58.png",
+        "release":  6,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "王昭君",
+        "image":  "hero7002877c8e.png",
+        "release":  6,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "鐘會",
+        "image":  "hero70034d3182.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "鄧艾",
+        "image":  "hero7004459006.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 步兵 方士"
+    },
+    {
+        "name":  "潘鳳",
+        "image":  "hero70059b2504.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "木鹿大王",
+        "image":  "hero7006534626.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "李儒",
+        "image":  "hero7007aa7ed3.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "何進",
+        "image":  "hero7008e1e28a.png",
+        "release":  7,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "陸抗",
+        "image":  "hero7009.png",
+        "release":  8,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "馬超",
+        "image":  "hero7014e58c6.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 騎兵 方士"
+    },
+    {
+        "name":  "周倉",
+        "image":  "hero7010.png",
+        "release":  8,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 方士"
+    },
+    {
+        "name":  "田豐",
+        "image":  "hero7011.png",
+        "release":  8,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "西施",
+        "image":  "hero7012.png",
+        "release":  8,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "許褚",
+        "image":  "hero70294e3f8.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 步兵 弓兵"
+    },
+    {
+        "name":  "貂蟬",
+        "image":  "hero703df8db3.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 方士"
+    },
+    {
+        "name":  "馬雲祿",
+        "image":  "hero704d5b8df.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 方士"
+    },
+    {
+        "name":  "黃月英",
+        "image":  "hero705b30363.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 騎兵 方士"
+    },
+    {
+        "name":  "關羽",
+        "image":  "hero706d800c3.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 騎兵 弓兵"
+    },
+    {
+        "name":  "司馬懿",
+        "image":  "hero707e3ae9c.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 騎兵 方士"
+    },
+    {
+        "name":  "呂布",
+        "image":  "hero708c04988.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 騎兵 方士"
+    },
+    {
+        "name":  "周瑜",
+        "image":  "hero709770614.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 騎兵 弓兵"
+    },
+    {
+        "name":  "孫策",
+        "image":  "hero7107051ed.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 步兵 方士"
+    },
+    {
+        "name":  "孟獲",
+        "image":  "hero7115e7074.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 騎兵 弓兵"
+    },
+    {
+        "name":  "張遼",
+        "image":  "hero7124d3a19.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 騎兵 方士"
+    },
+    {
+        "name":  "董卓",
+        "image":  "hero713b2d56f.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 步兵 弓兵"
+    },
+    {
+        "name":  "諸葛亮",
+        "image":  "hero714fcc700.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 步兵 方士"
+    },
+    {
+        "name":  "賈詡",
+        "image":  "hero715e8e485.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 步兵 弓兵"
+    },
+    {
+        "name":  "趙雲",
+        "image":  "hero716859b0b.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 步兵 弓兵"
+    },
+    {
+        "name":  "郭嘉",
+        "image":  "hero7172e2d1b.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 步兵 方士"
+    },
+    {
+        "name":  "陸遜",
+        "image":  "hero7189bf335.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 步兵 弓兵"
+    },
+    {
+        "name":  "甄姬",
+        "image":  "hero7197425ef.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 方士"
+    },
+    {
+        "name":  "祝融",
+        "image":  "hero720a33e46.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 方士"
+    },
+    {
+        "name":  "蔡文姬",
+        "image":  "hero72185fcd0.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "孫尚香",
+        "image":  "hero7222e3e56.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 步兵 弓兵"
+    },
+    {
+        "name":  "小喬",
+        "image":  "hero723d147d9.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 步兵 弓兵"
+    },
+    {
+        "name":  "大喬",
+        "image":  "hero7247a7514.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "呂蒙",
+        "image":  "hero725c973e4.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 名將 騎兵 方士"
+    },
+    {
+        "name":  "夏侯惇",
+        "image":  "hero726f5f018.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 騎兵 弓兵"
+    },
+    {
+        "name":  "夏侯淵",
+        "image":  "hero727e0b807.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 騎兵 弓兵"
+    },
+    {
+        "name":  "太史慈",
+        "image":  "hero728876eb9.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 步兵 弓兵"
+    },
+    {
+        "name":  "姜維",
+        "image":  "hero729e28cb8.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 名將 騎兵 方士"
+    },
+    {
+        "name":  "張郃",
+        "image":  "hero730ebc6e7.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 名將 騎兵 弓兵"
+    },
+    {
+        "name":  "張飛",
+        "image":  "hero731fc1366.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 騎兵 方士"
+    },
+    {
+        "name":  "法正",
+        "image":  "hero732cbed87.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 名將 步兵 方士"
+    },
+    {
+        "name":  "甘寧",
+        "image":  "hero733e82e49.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 步兵 方士"
+    },
+    {
+        "name":  "荀彧",
+        "image":  "hero73448b319.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 名將 步兵 弓兵"
+    },
+    {
+        "name":  "魏延",
+        "image":  "hero7353c4b2e.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 步兵 弓兵"
+    },
+    {
+        "name":  "黃忠",
+        "image":  "hero736b74b89.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 名將 騎兵 弓兵"
+    },
+    {
+        "name":  "徐庶",
+        "image":  "hero7375a47ca.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 名將 步兵 弓兵"
+    },
+    {
+        "name":  "孫乾",
+        "image":  "hero738f05248.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 步兵 弓兵"
+    },
+    {
+        "name":  "龐德",
+        "image":  "hero739236a6b.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 步兵 方士"
+    },
+    {
+        "name":  "廖化",
+        "image":  "hero740bc8117.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 步兵 方士"
+    },
+    {
+        "name":  "徐晃",
+        "image":  "hero74109bb60.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "文醜",
+        "image":  "hero7427edf0b.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 騎兵 方士"
+    },
+    {
+        "name":  "曹仁",
+        "image":  "hero743ef934e.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 步兵 弓兵"
+    },
+    {
+        "name":  "程普",
+        "image":  "hero74456c764.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "荀攸",
+        "image":  "hero7455722da.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 步兵 方士"
+    },
+    {
+        "name":  "諸葛瑾",
+        "image":  "hero746218555.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 步兵 方士"
+    },
+    {
+        "name":  "陳宮",
+        "image":  "hero7477f263f.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 步兵 方士"
+    },
+    {
+        "name":  "韓當",
+        "image":  "hero748aa257e.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 騎兵 方士"
+    },
+    {
+        "name":  "顏良",
+        "image":  "hero7491fc071.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "馬岱",
+        "image":  "hero75030f6c5.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "魯肅",
+        "image":  "hero751d58c1a.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 騎兵 方士"
+    },
+    {
+        "name":  "黃蓋",
+        "image":  "hero75231df68.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 步兵 弓兵"
+    },
+    {
+        "name":  "淩統",
+        "image":  "hero753a9f938.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "夏侯霸",
+        "image":  "hero754465aa2.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 騎兵 方士"
+    },
+    {
+        "name":  "周泰",
+        "image":  "hero755e1ebb6.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 步兵 弓兵"
+    },
+    {
+        "name":  "華雄",
+        "image":  "hero75644a579.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 騎兵 弓兵"
+    },
+    {
+        "name":  "典韋",
+        "image":  "hero757bad0d7.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 良才 步兵 方士"
+    },
+    {
+        "name":  "于禁",
+        "image":  "hero758ad38f4.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 步兵 方士"
+    },
+    {
+        "name":  "樂進",
+        "image":  "hero75993ca8d.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 良才 騎兵 方士"
+    },
+    {
+        "name":  "王司徒",
+        "image":  "hero760ecb585.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 良才 步兵 弓兵"
+    },
+    {
+        "name":  "龐統",
+        "image":  "hero761c57789.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 騎兵 方士"
+    },
+    {
+        "name":  "曹操",
+        "image":  "hero762908e4f.png",
+        "release":  1,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "劉備",
+        "image":  "hero7639ccb7f.png",
+        "release":  1,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "孫權",
+        "image":  "hero764b6ee4c.png",
+        "release":  1,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 步兵 方士"
+    },
+    {
+        "name":  "華佗",
+        "image":  "hero765b3f263.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "于吉",
+        "image":  "hero7668af54d.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "司馬徽",
+        "image":  "hero7670f6901.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 步兵 方士"
+    },
+    {
+        "name":  "童淵",
+        "image":  "hero7685611dc.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "張角",
+        "image":  "hero7695c01a8.png",
+        "release":  1,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "漢獻帝",
+        "image":  "hero770574759.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 步兵 弓兵"
+    },
+    {
+        "name":  "諸葛果",
+        "image":  "hero77005ca911.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 方士"
+    },
+    {
+        "name":  "董白",
+        "image":  "hero7701f80b71.png",
+        "release":  1,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "何皇后",
+        "image":  "hero7702bd28ab.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 方士"
+    },
+    {
+        "name":  "張寧",
+        "image":  "hero77035616e9.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 方士"
+    },
+    {
+        "name":  "花鬘",
+        "image":  "hero77048d11e5.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 方士"
+    },
+    {
+        "name":  "鮑三娘",
+        "image":  "hero77059d2bc8.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "張琪瑛",
+        "image":  "hero7706f056d5.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 步兵 方士"
+    },
+    {
+        "name":  "呂玲綺",
+        "image":  "hero771881632.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "班育雙姝",
+        "image":  "hero7727c451a.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 騎兵 方士"
+    },
+    {
+        "name":  "關銀屏",
+        "image":  "hero7737b5666.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 騎兵 弓兵"
+    },
+    {
+        "name":  "步練師",
+        "image":  "hero774671026.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 巾幗 步兵 方士"
+    },
+    {
+        "name":  "吳國太",
+        "image":  "hero775249dfa.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 弓兵"
+    },
+    {
+        "name":  "張星彩",
+        "image":  "hero7768a630c.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "武將 巾幗 步兵 方士"
+    },
+    {
+        "name":  "張春華",
+        "image":  "hero777005823.png",
+        "release":  0,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "文官 巾幗 步兵 弓兵"
+    },
+    {
+        "name":  "劉禪",
+        "image":  "hero778379d3d.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 國士 騎兵 弓兵"
+    },
+    {
+        "name":  "文鴦",
+        "image":  "hero779efb5ad.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 國士 騎兵 方士"
+    },
+    {
+        "name":  "曹丕",
+        "image":  "hero780b22aa4.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 國士 步兵 方士"
+    },
+    {
+        "name":  "兀突骨",
+        "image":  "hero7818bb2ef.png",
+        "release":  4,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 方士"
+    },
+    {
+        "name":  "馬忠",
+        "image":  "hero782f683d4.png",
+        "release":  4,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "王越",
+        "image":  "hero78383d61b.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "左慈",
+        "image":  "hero7840644d4.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "陳壽",
+        "image":  "hero78512b278.png",
+        "release":  3,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "紫虛上人",
+        "image":  "hero78684528e.png",
+        "release":  3,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "南華老仙",
+        "image":  "hero78784dcb4.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 步兵 方士"
+    },
+    {
+        "name":  "黃承彥",
+        "image":  "hero788f8b425.png",
+        "release":  4,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "袁紹",
+        "image":  "hero7898c40d9.png",
+        "release":  2,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 方士"
+    },
+    {
+        "name":  "孫堅",
+        "image":  "hero7920f427d.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 步兵 方士"
+    },
+    {
+        "name":  "劉邦",
+        "image":  "hero793f9171a.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 弓兵"
+    },
+    {
+        "name":  "項羽",
+        "image":  "hero794c6199f.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "武將 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "虞姬",
+        "image":  "hero795cc14f9.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "女性",
+        "category":  "全才 傳奇 步兵 弓兵"
+    },
+    {
+        "name":  "張良",
+        "image":  "hero797113a3b.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "文官 傳奇 騎兵 方士"
+    },
+    {
+        "name":  "韓信",
+        "image":  "hero798d25348.png",
+        "release":  5,
+        "tags":  [
+
+                 ],
+        "sets":  "",
+        "gender":  "男性",
+        "category":  "全才 傳奇 步兵 弓兵"
+    }
+]

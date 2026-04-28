@@ -1,0 +1,1141 @@
+/* Simulator Styles */
+.simulator-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 450px;
+    gap: 20px;
+    height: 85vh; /* 鎖定高度，防止被內容撐開 */
+    min-height: 600px;
+    align-items: stretch;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@media (max-width: 900px) {
+    .simulator-container {
+        grid-template-columns: 1fr; /* 手機板改為單欄，右側統計區會掉到下方 */
+        height: auto; /* 解除高度鎖定，讓內容自然往下長 */
+        padding: 10px;
+    }
+}
+
+
+.simulator-layout {
+    grid-column: 1 / 2;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+}
+
+.equip-linear-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 15px 0;
+    flex-wrap: nowrap; /* 強制單行 */
+    background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+}
+
+.equip-slot {
+    position: relative;
+    width: 105px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 10;
+}
+
+.equip-slot.active {
+    z-index: 5000; /* 高於 simulator-controls (3000) */
+}
+
+@media (max-width: 900px) {
+    .equip-linear-wrapper {
+        flex-wrap: wrap !important; /* 強制允許換行 */
+        padding: 20px 10px !important;
+        gap: 15px 10px !important;
+        justify-content: center !important;
+    }
+    
+    .equip-slot {
+        width: calc(33.333% - 10px) !important; /* 強制一行 3 件 */
+    }
+
+    .slot-card {
+        width: 95px !important; 
+        height: 95px !important;
+    }
+
+    .equip-slot.active {
+        transform: translateY(-10px) scale(1.05) !important;
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+}
+
+
+/* Removed Pentagon Positions */
+
+.slot-label {
+    font-size: 0.9rem;
+    color: var(--primary-gold);
+    margin-bottom: 8px;
+    font-weight: bold;
+    text-shadow: 1px 1px 3px black;
+    letter-spacing: 2px;
+}
+
+.slot-card {
+    width: 95px;
+    height: 95px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid rgba(212, 175, 55, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+}
+
+.slot-card:hover {
+    border-color: var(--primary-gold);
+    transform: scale(1.1);
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.5);
+}
+
+.slot-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 6px;
+}
+
+.slot-placeholder {
+    color: rgba(212, 175, 55, 0.2);
+    font-size: 2.2rem;
+}
+
+.slot-item-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+    color: var(--accent-gold);
+    font-size: 0.75rem;
+    padding: 4px 2px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.slot-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-bottom-right-radius: 6px;
+    z-index: 10;
+    white-space: nowrap;
+    font-weight: bold;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+/* 神靈位標籤顏色 */
+.equip-slot.weapon_p .slot-badge,
+.equip-slot.mount_p .slot-badge,
+.equip-slot.book_p .slot-badge,
+.equip-slot.treasure_p .slot-badge,
+.equip-slot.token_p .slot-badge {
+    background: linear-gradient(135deg, var(--primary-red), #600);
+    color: white;
+}
+
+.remove-item {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-red);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 15;
+}
+
+.slot-card:hover .remove-item {
+    opacity: 1;
+}
+
+/* Autocomplete Popover */
+.slot-search-popover {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    background: rgba(20, 20, 25, 0.98);
+    border: 1px solid var(--primary-gold);
+    border-radius: 12px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.2);
+    margin-top: 10px;
+    z-index: 5100;
+    padding: 15px; /* 將 padding 移到最外層容器 */
+    box-sizing: border-box; /* 確保寬度包含 padding */
+    backdrop-filter: blur(20px);
+    animation: popoverFadeIn 0.2s ease-out;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 320px;
+    max-height: 450px;
+}
+
+/* 統一捲軸樣式 */
+.search-results-list::-webkit-scrollbar,
+.popover-effects-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.search-results-list::-webkit-scrollbar-thumb,
+.popover-effects-list::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.4);
+    border-radius: 10px;
+}
+
+.search-results-list,
+.popover-effects-list {
+    flex: 1; /* 填滿剩餘高度，解決高度不滿版問題 */
+    width: 100%;
+    /* 移除 max-height 限制，改由 flex 控制 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
+}
+
+/* 雙層選單視口與軌道 */
+.popover-viewport {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex: 1;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    min-height: 0; /* 重要：允許內部捲動 */
+}
+
+.popover-track {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr; /* 強制列高不隨內容擴張，徹底解決 Grid 撐開的問題 */
+    width: 200%; 
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.popover-track.slide-effects {
+    transform: translateX(-50%);
+}
+
+.popover-layer {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0; /* 外層已有 padding，此處歸零 */
+    margin: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0; /* 重要：允許內部捲動 */
+    transition: opacity 0.3s ease;
+}
+
+.popover-track.slide-effects .items-layer {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.popover-track:not(.slide-effects) .effects-layer {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* 內部元素已經由最外層的 padding 控制邊距 */
+.slot-search-popover > input,
+.popover-layer > input,
+.popover-layer-header,
+.no-results {
+    margin-bottom: 12px;
+}
+
+.search-results-list,
+.popover-effects-list {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px; /* 縮小選項間距 */
+    flex: 1;
+    min-height: 0; 
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* 詞條層樣式 */
+.popover-layer-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.popover-back-btn {
+    background: rgba(212, 175, 55, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: var(--primary-gold);
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.popover-back-btn:hover {
+    background: var(--primary-gold);
+    color: black;
+    transform: translateX(-3px);
+}
+
+.pending-item-name {
+    font-size: 0.9rem;
+    color: white;
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.popover-effects-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.popover-effect-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    border-radius: 6px; /* 恢復圓角 */
+    padding: 8px 12px; /* 恢復適當內距 */
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.popover-effect-item:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: var(--primary-gold);
+    transform: scale(1.02);
+}
+
+.eff-idx {
+    background: var(--primary-gold);
+    color: black;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: bold;
+    margin-top: 1px;
+}
+
+.eff-text {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    line-height: 1.4;
+}
+
+.slot-search-popover.upwards {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: 10px;
+    box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.2);
+    flex-direction: column-reverse; /* 基礎插槽輸入框反轉 */
+}
+
+/* 神靈位雙層選單也需要反轉 */
+.slot-search-popover.upwards .popover-layer {
+    flex-direction: column-reverse;
+}
+
+/* 反轉後的間距調整（原先是 bottom 有間距，現在改為 top） */
+.slot-search-popover.upwards > input,
+.slot-search-popover.upwards .popover-layer > input,
+.slot-search-popover.upwards .popover-layer-header {
+    margin-bottom: 0;
+    margin-top: 12px;
+}
+
+.slot-search-popover::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: var(--arrow-left, 50%);
+    transform: translateX(-50%);
+    border-width: 8px;
+    border-style: solid;
+    border-color: transparent transparent var(--primary-gold) transparent;
+}
+
+.slot-search-popover.upwards::after {
+    bottom: auto;
+    top: 100%;
+    border-color: var(--primary-gold) transparent transparent transparent;
+}
+
+
+.slot-search-popover input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    outline: none;
+}
+
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* 稍微增加圖文間距以配合放大的圖片 */
+    padding: 6px 10px; /* 縮小上下內距，讓選項更緊湊 */
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: 6px;
+}
+
+.search-result-item:hover {
+    background: rgba(212, 175, 55, 0.15);
+}
+
+.search-result-item img {
+    width: 42px; /* 圖片顯著放大 */
+    height: 42px;
+    object-fit: contain;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.search-result-item span {
+    font-size: 0.9rem;
+    color: #eee;
+}
+
+.no-results {
+    padding: 10px;
+    text-align: center;
+    color: #888;
+    font-size: 0.85rem;
+}
+
+/* 插槽標記 (如: 5合神靈) */
+.slot-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: linear-gradient(135deg, #d4af37, #f1c40f);
+    color: #000;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-bottom-right-radius: 6px;
+    z-index: 10;
+    font-weight: 900;
+    pointer-events: none;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Summary Section */
+.simulator-summary {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    background: rgba(25, 30, 35, 0.95);
+    border: 1px solid var(--primary-gold);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    height: 100%; 
+    min-height: 0; /* 重要：允許彈窗高度小於其內容，觸發內部捲動 */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* 手機版響應式優化 */
+@media (max-width: 900px) {
+    .simulator-container {
+        grid-template-columns: 1fr; /* 單欄佈局 */
+        padding: 10px 10px 120px 10px !important; /* 增加底部空白，避免被懸浮按鈕擋住 */
+    }
+
+    .simulator-summary {
+        position: fixed;
+        top: 60px;
+        right: 0;
+        width: 320px;
+        max-width: 85%;
+        height: calc(100vh - 60px);
+        z-index: 6000;
+        transform: translateX(105%);
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 12px 0 0 12px;
+        border-right: none;
+        background: rgba(15, 20, 25, 0.98);
+        backdrop-filter: blur(20px);
+    }
+
+    .simulator-summary.mobile-open {
+        transform: translateX(0);
+    }
+
+    .mobile-summary-toggle {
+        display: flex !important;
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        background: linear-gradient(135deg, var(--primary-gold), #f1c40f);
+        color: black;
+        border: none;
+        border-radius: 50px;
+        padding: 12px 24px;
+        font-weight: bold;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.3);
+        z-index: 5500;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .summary-overlay {
+        display: block !important;
+        position: fixed;
+        top: 60px;
+        left: 0;
+        width: 100%;
+        height: calc(100vh - 60px);
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(4px);
+        z-index: 5000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s;
+    }
+
+    .summary-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+.mobile-summary-toggle {
+    display: none;
+}
+
+.summary-overlay {
+    display: none;
+}
+
+.summary-header {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    font-size: 1rem;
+    color: var(--primary-gold);
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 0.2rem;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clear-all-btn-header {
+    position: absolute;
+    right: 10px;
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0;
+    font-weight: normal;
+}
+
+.clear-all-btn-header:hover {
+    background: rgba(239, 68, 68, 0.4);
+    color: white;
+    border-color: #ef4444;
+}
+
+.summary-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.summary-group {
+    margin-bottom: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.summary-item-title {
+    color: var(--accent-gold);
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.85rem;
+}
+
+.summary-effects-list {
+    list-style: none;
+}
+
+.summary-effects-list li {
+    font-size: 0.9rem;
+    color: #ccc;
+    line-height: 1.6;
+    margin-bottom: 4px;
+    position: relative;
+    padding-left: 15px;
+}
+
+.summary-effects-list li::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary-gold);
+}
+
+.empty-summary {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    text-align: center;
+}
+
+.clear-all-btn {
+    margin: 1.5rem;
+    padding: 0.8rem;
+    background: transparent;
+    border: 1px solid var(--primary-red);
+    color: var(--primary-red);
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+}
+
+.clear-all-btn:hover {
+    background: var(--primary-red);
+    color: white;
+}
+
+@media (max-width: 900px) {
+    .equip-linear-wrapper {
+        gap: 4px;
+        padding: 10px 2px;
+        flex-wrap: nowrap;
+        overflow: visible; /* 關閉捲動 */
+        justify-content: center; /* 居中對齊 */
+    }
+    .equip-slot { 
+        width: 60px; /* 進一步縮小 */
+        flex: 0 0 60px;
+    }
+    .slot-card { 
+        width: 58px; 
+        height: 58px; 
+    }
+    .slot-placeholder { font-size: 1.2rem; }
+    .slot-label { 
+        font-size: 0.7rem; 
+        letter-spacing: 0;
+        white-space: nowrap;
+    }
+    .slot-badge {
+        font-size: 8px;
+        padding: 1px 3px;
+        top: -2px;
+        left: -2px;
+    }
+}
+
+/* Simulator Controls */
+.simulator-controls {
+    grid-column: 1 / 2;
+    width: 100%;
+    margin-bottom: 0;
+    position: relative;
+    z-index: 3000;
+}
+
+.controls-top-bar {
+    display: flex;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-left: 5px;
+}
+
+.action-btn {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: var(--primary-gold);
+    padding: 6px 15px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(5px);
+}
+
+.action-btn:hover {
+    background: rgba(212, 175, 55, 0.2);
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
+    transform: translateY(-2px);
+}
+
+.clear-btn {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.clear-btn:hover {
+    background: rgba(248, 113, 113, 0.1);
+    border-color: #f87171;
+    box-shadow: 0 0 15px rgba(248, 113, 113, 0.1);
+}
+
+.control-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    background: rgba(25, 30, 35, 0.8);
+    padding: 8px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    backdrop-filter: blur(10px);
+    align-items: center;
+}
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    color: var(--primary-gold);
+    font-size: 0.9rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.control-group select {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: white;
+    padding: 0 12px;
+    height: 35px;
+    width: 180px; /* 統一寬度 */
+    border-radius: 6px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.control-group select:hover {
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.set-quick-select select option {
+    background: #1a1e22;
+    color: white;
+}
+
+/* Aggregated Stats Styles */
+.aggregated-stats {
+    background: rgba(212, 175, 55, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    margin-bottom: 2rem !important;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.stat-pill {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 10px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.stat-name {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+.stat-value {
+    font-size: 0.95rem;
+    font-weight: bold;
+    font-family: 'Noto Sans TC', sans-serif;
+}
+
+.stat-value.pos {
+    color: #00ff9f;
+    text-shadow: 0 0 5px rgba(0, 255, 159, 0.3);
+}
+
+.stat-value.neg {
+    color: #ff4d4d;
+}
+
+.no-stats-hint {
+    text-align: center;
+    color: #555;
+    font-size: 0.8rem;
+    padding: 10px;
+}
+
+/* Inactive Effect Styles */
+.inactive-effect {
+    opacity: 0.45;
+    text-decoration: line-through;
+    filter: grayscale(1);
+    transition: all 0.3s;
+}
+
+.inactive-tag {
+    font-size: 0.7rem;
+    color: #ff6b6b;
+    margin-left: 8px;
+    font-style: normal;
+    text-decoration: none !important;
+    display: inline-block;
+}
+
+.summary-effects-list li:not(.inactive-effect) {
+    color: #fff;
+    text-shadow: 0 0 5px rgba(212, 175, 55, 0.2);
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-group input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary-gold);
+}
+
+.inactive-segment {
+    text-decoration: line-through;
+    opacity: 0.5;
+    color: #888;
+}
+
+.hero-selector-group {
+    justify-content: flex-start;
+}
+
+.hero-info-badge {
+    display: flex;
+    gap: 8px;
+    margin-left: 15px;
+}
+
+.badge-tag {
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--primary-gold);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    font-weight: bold;
+}
+
+.hero-autocomplete-container {
+    position: relative;
+    width: 180px; /* 統一寬度 */
+}
+
+.current-hero-display {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    color: white;
+    padding: 0 12px;
+    height: 35px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.current-hero-display:hover {
+    border-color: var(--primary-gold);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.hero-search-popover {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    width: 240px; /* 從 320px 縮小寬度 */
+    background: #1a1e22;
+    border: 1px solid var(--primary-gold);
+    border-radius: 8px;
+    z-index: 3100;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    padding: 10px;
+}
+
+.hero-search-popover input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    outline: none;
+}
+
+.hero-results-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.hero-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-radius: 4px;
+    color: #ccc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+}
+
+.hero-result-item:hover {
+    background: rgba(212, 175, 55, 0.2);
+    color: var(--primary-gold);
+}
+
+.hero-result-name {
+    font-weight: bold;
+    color: white;
+    white-space: nowrap;
+}
+
+.hero-result-tags {
+    font-size: 0.75rem;
+    color: #888;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 四維加總樣式 */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.stat-pill {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 5px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(212, 175, 55, 0.15);
+    transition: all 0.3s ease;
+}
+
+.stat-pill:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: rgba(212, 175, 55, 0.3);
+    transform: translateY(-2px);
+}
+
+.stat-pill .stat-name {
+    font-size: 0.75rem;
+    color: #aaa;
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+
+.stat-pill .stat-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: var(--primary-gold);
+}
+
+.stat-pill .stat-value.pos { color: #4ade80; }
+.stat-pill .stat-value.neg { color: #f87171; }
+
+/* 魂玉插槽特殊樣式 */
+.equip-slot.hunyu .slot-card {
+    border-style: dashed !important;
+    border-color: rgba(168, 85, 247, 0.5) !important;
+    background: rgba(168, 85, 247, 0.08) !important;
+    box-shadow: inset 0 0 15px rgba(168, 85, 247, 0.1);
+}
+
+.equip-slot.hunyu .slot-label {
+    color: #c084fc !important;
+    text-shadow: 0 0 8px rgba(168, 85, 247, 0.5) !important;
+}
+
+.equip-slot.hunyu .plus-icon {
+    color: rgba(168, 85, 247, 0.3) !important;
+}
+
+
+/* 神靈位插槽樣式統一 */
+.equip-slot.weapon_p .slot-card,
+.equip-slot.mount_p .slot-card,
+.equip-slot.book_p .slot-card,
+.equip-slot.treasure_p .slot-card,
+.equip-slot.token_p .slot-card {
+    padding: 0;
+}
+
+/* 隱藏神靈位內部的額外 UI，改用懸浮預覽窗處理 */
+.effect-selector, .selected-effect-preview {
+    display: none !important;
+}
+
+.selected-effect-preview .effect-bit {
+    transform: scale(0.85);
+    flex-shrink: 0;
+}
+
+/* 詞條按鈕基礎樣式 */
+.effect-bit {
+    width: 18px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 3px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.effect-bit:hover {
+    background: rgba(212, 175, 55, 0.3);
+    color: white;
+    border-color: var(--primary-gold);
+}
+
+.effect-bit.active {
+    background: var(--primary-gold);
+    color: black;
+    border-color: white;
+    font-weight: bold;
+}
+
+.effect-selector {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 0 5px;
+}
+
+.selected-effect-preview {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}

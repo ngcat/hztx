@@ -10,6 +10,7 @@
         rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=1.1">
     <link rel="stylesheet" href="css/equipment-list.css?v=1.1">
+    <link rel="stylesheet" href="css/simulator.css?v=1.1">
     <link rel="icon" href="img/equip02669a3dc.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -28,11 +29,20 @@
 
         <aside class="sidebar" :class="{ 'open': isSidebarOpen }">
             <nav class="sidebar-nav">
+                <!-- 裝備大項 (自動從 categories.json 讀取) -->
                 <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat.id)"
                     :class="['sidebar-item', { active: currentCategory === cat.id }]">
                     {{ cat.name }}
                 </button>
+
+                <!-- 配裝模擬 -->
+                <button class="sidebar-item" :class="{ active: currentCategory === 'sim' }" @click="selectCategory('sim')">
+                    🧪 配裝模擬
+                </button>
+
                 <div class="sidebar-divider"></div>
+
+                <!-- 免責聲明 -->
                 <button class="sidebar-item" :class="{ active: currentCategory === 'disclaimer' }" @click="selectCategory('disclaimer')">
                     🛡️ 免責聲明
                 </button>
@@ -46,32 +56,36 @@
                 </div>
 
                 <template v-else>
-                    <div v-if="loading" class="loader">
-                        <div class="loader-icon"></div>
-                        <p style="letter-spacing: 0.5rem; color: var(--primary-gold);">正在讀取三國卷軸...</p>
-                    </div>
-
-                    <template v-else>
-                        <div v-if="currentCategory === 'disclaimer'" class="disclaimer-container">
-                            <div class="disclaimer-header">
-                                <h1>免責聲明</h1>
-                            </div>
-                            <div class="disclaimer-content">
-                                <p>歡迎訪問「皇者書院」（以下簡稱「本站」）。在您使用本站提供的資訊前，請務必仔細閱讀並透徹理解本聲明。</p>
-                                <h2>一、 資訊來源與準確性</h2>
-                                <p>1. 本站為非官方性質的數據研究與交流平台，所收錄之遊戲數據、圖片、文字等資訊，均來自於公開網路資訊或使用者提供。</p>
-                                <p>2. 由於遊戲版本更新頻繁，本站無法保證所有資訊的即時性與絕對準確性。本站提供的資訊僅供參考，實際遊戲內容請以官方發布之最新版本為準。</p>
-                                <h2>二、 知識產權說明</h2>
-                                <p>1. 本站展示的所有遊戲相關素材之知識產權均歸原遊戲開發商與發行商所有。本站僅出於學習研究之目的使用，無意侵犯任何版權。</p>
-                                <p>2. 如相關權利人認為本站內容侵犯其合法權益，請及時與我們聯繫，本站將配合刪除。</p>
-                                <h2>三、 責任限制</h2>
-                                <p>1. 本站對因使用本站資訊而產生的任何損失不承擔法律責任。對於不可抗力導致的服務中斷，本站不承擔賠償責任。</p>
-                                <h2>四、 禁止商業用途</h2>
-                                <p>本站內容嚴禁用於任何營利性或非法商業活動。違規使用產生的一切後果由使用者自行承擔。</p>
-                            </div>
+                        <div v-if="loading" class="loader">
+                            <div class="loader-icon"></div>
+                            <p class="loader-text">正在讀取三國卷軸...</p>
                         </div>
 
-                        <equipment-list v-else :all-items="allItems" :category="currentCategory"></equipment-list>
+                    <template v-else>
+                        <keep-alive>
+                            <div v-if="currentCategory === 'disclaimer'" :key="'disclaimer'" class="disclaimer-container">
+                                <div class="disclaimer-header">
+                                    <h1>免責聲明</h1>
+                                </div>
+                                <div class="disclaimer-content">
+                                    <p>歡迎訪問「皇者書院」（以下簡稱「本站」）。在您使用本站提供的資訊前，請務必仔細閱讀並透徹理解本聲明。</p>
+                                    <h2>一、 資訊來源與準確性</h2>
+                                    <p>1. 本站為非官方性質的數據研究與交流平台，所收錄之遊戲數據、圖片、文字等資訊，均來自於公開網路資訊或使用者提供。</p>
+                                    <p>2. 由於遊戲版本更新頻繁，本站無法保證所有資訊的即時性與絕對準確性。本站提供的資訊僅供參考，實際遊戲內容請以官方發布之最新版本為準。</p>
+                                    <h2>二、 知識產權說明</h2>
+                                    <p>1. 本站展示的所有遊戲相關素材之知識產權均歸原遊戲開發商與發行商所有。本站僅出於學習研究之目的使用，無意侵犯任何版權。</p>
+                                    <p>2. 如相關權利人認為本站內容侵犯其合法權益，請及時與我們聯繫，本站將配合刪除。</p>
+                                    <h2>三、 責任限制</h2>
+                                    <p>1. 本站對因使用本站資訊而產生的任何損失不承擔法律責任。對於不可抗力導致的服務中斷，本站不承擔賠償責任。</p>
+                                    <h2>四、 禁止商業用途</h2>
+                                    <p>本站內容嚴禁用於任何營利性或非法商業活動。違規使用產生的一切後果由使用者自行承擔。</p>
+                                </div>
+                            </div>
+
+                            <simulator-component v-else-if="currentCategory === 'sim'" :key="'sim'" :all-items="allItems"></simulator-component>
+
+                            <equipment-list v-else :key="'equip'" :all-items="allItems" :category="currentCategory"></equipment-list>
+                        </keep-alive>
                     </template>
                 </template>
             </div>
@@ -79,6 +93,7 @@
     </div>
 
     <script src="js/equipment-list.js"></script>
+    <script src="js/simulator.js"></script>
     <script src="js/app.js"></script>
 </body>
 
