@@ -29,22 +29,41 @@
 body {
     font-family: 'Noto Sans TC', sans-serif;
     background-color: var(--dark-bg);
-    background-image:
-        linear-gradient(rgba(11, 13, 15, 0.8), rgba(11, 13, 15, 0.9)),
-        radial-gradient(circle at 50% 50%, rgba(180, 46, 46, 0.05) 0%, transparent 70%),
-        url('../img/bg2220f96.jpg');
-    background-size: cover;
-    background-attachment: fixed;
-    background-position: center;
     color: var(--text-light);
     min-height: 100vh;
     overflow-x: hidden;
 }
 
-body.no-scroll { overflow: hidden; }
+body.no-scroll {
+    overflow: hidden;
+}
 
-/* Ink wash effect overlay */
+/* 修正手機版背景跳動：使用固定定位的偽元素並強制固定高度 */
 body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* 使用 lvh (Large Viewport Height) 防止手機網址列伸縮時背景跳動 */
+    height: 100lvh;
+    min-height: 100%;
+    background-image:
+        linear-gradient(rgba(11, 13, 15, 0.8), rgba(11, 13, 15, 0.9)),
+        radial-gradient(circle at 50% 50%, rgba(180, 46, 46, 0.05) 0%, transparent 70%),
+        url('../img/bg2220f96.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: scroll;
+    z-index: -2;
+    pointer-events: none;
+    /* 強制 GPU 渲染，減少捲動時的抖動 */
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* 墨水紋理層 */
+body::after {
     content: "";
     position: fixed;
     top: 0;
@@ -54,7 +73,7 @@ body::before {
     background: url('https://www.transparenttextures.com/patterns/pinstriped-suit.png');
     opacity: 0.1;
     pointer-events: none;
-    z-index: 1;
+    z-index: -1;
 }
 
 .top-nav {
@@ -93,9 +112,18 @@ body::before {
     transform-origin: center;
 }
 
-.hamburger-btn.open span:nth-child(1) { transform: translateY(9px) rotate(45deg); }
-.hamburger-btn.open span:nth-child(2) { opacity: 0; transform: scale(0); }
-.hamburger-btn.open span:nth-child(3) { transform: translateY(-9px) rotate(-45deg); }
+.hamburger-btn.open span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+}
+
+.hamburger-btn.open span:nth-child(2) {
+    opacity: 0;
+    transform: scale(0);
+}
+
+.hamburger-btn.open span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+}
 
 .nav-logo {
     font-family: inherit;
@@ -128,7 +156,9 @@ body::before {
     user-select: none;
 }
 
-.sidebar.open { transform: translateX(0); }
+.sidebar.open {
+    transform: translateX(0);
+}
 
 .sidebar-overlay {
     position: fixed;
@@ -145,7 +175,10 @@ body::before {
     display: none;
 }
 
-.sidebar-overlay.show { opacity: 1; visibility: visible; }
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
 
 .sidebar-nav {
     padding: 10px 0;
@@ -166,7 +199,8 @@ body::before {
     border-left: 4px solid transparent;
 }
 
-.sidebar-item:hover, .sidebar-item.active {
+.sidebar-item:hover,
+.sidebar-item.active {
     background: rgba(212, 175, 55, 0.15);
     color: var(--primary-gold);
     border-left-color: var(--primary-gold);
@@ -226,12 +260,32 @@ body::before {
 }
 
 @media (max-width: 768px) {
-    .container { width: 100%; padding: 0 1rem; }
-    .sidebar { width: 70%; }
-    .sidebar-overlay { display: block; }
-    .top-nav { padding: 0.5rem 1rem; }
-    .disclaimer-container { padding: 1.5rem; margin-top: 1rem; }
-    .disclaimer-header h1 { font-size: 1.5rem; letter-spacing: 0.2rem; }
+    .container {
+        width: 100%;
+        padding: 0 1rem;
+    }
+
+    .sidebar {
+        width: 70%;
+    }
+
+    .sidebar-overlay {
+        display: block;
+    }
+
+    .top-nav {
+        padding: 0.5rem 1rem;
+    }
+
+    .disclaimer-container {
+        padding: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .disclaimer-header h1 {
+        font-size: 1.5rem;
+        letter-spacing: 0.2rem;
+    }
 }
 
 /* Shared Components */
@@ -280,21 +334,32 @@ body::before {
 }
 
 
-.tag-良才 { background: linear-gradient(135deg, #00b894, #006266); }
+.tag-良才 {
+    background: linear-gradient(135deg, #00b894, #006266);
+}
+
 .tag-國士 {
     background: linear-gradient(135deg, #d4af37, #8a6a1c);
     color: #fff;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     border-color: rgba(212, 175, 55, 0.5);
 }
-.tag-巾幗 { background: linear-gradient(135deg, #e84393, #b71540); }
+
+.tag-巾幗 {
+    background: linear-gradient(135deg, #e84393, #b71540);
+}
+
 .tag-名將 {
     background: linear-gradient(135deg, #bdc3c7, #7f8c8d);
     color: #fff;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
     border-color: rgba(189, 195, 199, 0.5);
 }
-.tag-裝備 { background: linear-gradient(135deg, #a0522d, #5c2c16); }
+
+.tag-裝備 {
+    background: linear-gradient(135deg, #a0522d, #5c2c16);
+}
+
 .tag-傳奇 {
     background: linear-gradient(135deg, #6c5ce7, #a29bfe);
     color: #fff;
@@ -303,7 +368,25 @@ body::before {
 
 .loader {
     text-align: center;
-    padding: 10rem;
+    padding: 6rem 1rem;
+    width: 100%;
+}
+
+.loader-text {
+    letter-spacing: 0.5rem;
+    color: var(--primary-gold);
+    font-size: 1.1rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .loader {
+        padding: 4rem 0.5rem;
+    }
+    .loader-text {
+        letter-spacing: 0.2rem;
+        font-size: 1rem;
+    }
 }
 
 .loader-icon {
@@ -312,11 +395,19 @@ body::before {
     border: 4px solid rgba(212, 175, 55, 0.1);
     border-top: 4px solid var(--primary-gold);
     border-radius: 50%;
-    margin: 0 auto 2rem;
+    margin: 0 auto 1.5rem;
     animation: spin 1s linear infinite;
 }
 
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
 
 /* Modal System */
 .modal-overlay {
@@ -381,4 +472,3 @@ body::before {
     border: 1px solid rgba(212, 175, 55, 0.2);
     width: 100%;
 }
-
