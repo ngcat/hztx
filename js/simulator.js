@@ -1030,7 +1030,7 @@ const SimulatorComponent = {
                                 </div>
                             </div>
                         </div>
-                        <div class="control-group" style="margin-left: 10px;">
+                        <div class="control-group">
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; color: var(--primary-gold); font-size: 0.9rem;">
                                 <input type="checkbox" v-model="heroState.isAwakened" style="accent-color: var(--primary-gold); width: 16px; height: 16px;"> 已覺醒
                             </label>

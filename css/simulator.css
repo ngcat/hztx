@@ -36,7 +36,7 @@
     align-items: center;
     gap: 12px;
     width: 100%;
-    padding: 15px 0;
+    padding: 30px 0;
     flex-wrap: nowrap; /* 強制單行 */
     background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
 }
@@ -81,7 +81,7 @@
 /* Removed Pentagon Positions */
 
 .slot-label {
-    font-size: 0.9rem;
+    font-size: 1.1rem;
     color: var(--primary-gold);
     margin-bottom: 8px;
     font-weight: bold;
@@ -101,7 +101,7 @@
     justify-content: center;
     position: relative;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    overflow: hidden;
+    overflow: hidden; /* 恢復隱藏 */
     backdrop-filter: blur(5px);
 }
 
@@ -130,7 +130,7 @@
     right: 0;
     background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
     color: var(--accent-gold);
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     padding: 4px 2px;
     text-align: center;
     white-space: nowrap;
@@ -142,14 +142,15 @@
     position: absolute;
     top: 0;
     left: 0;
-    font-size: 0.75rem;
-    padding: 2px 8px;
+    font-size: 0.7rem;
+    padding: 2px 6px;
     border-bottom-right-radius: 6px;
-    z-index: 10;
+    z-index: 20; /* 提高層級 */
     white-space: nowrap;
     font-weight: bold;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
     pointer-events: none;
+    line-height: 1.2;
 }
 
 /* 神靈位標籤顏色 */
@@ -464,7 +465,7 @@
 }
 
 .search-result-item span {
-    font-size: 0.9rem;
+    font-size: 1rem;
     color: #eee;
 }
 
@@ -475,22 +476,9 @@
     font-size: 0.85rem;
 }
 
-/* 插槽標記 (如: 5合神靈) */
-.slot-badge {
-    position: absolute;
-    top: 0;
-    left: 0;
-    background: linear-gradient(135deg, #d4af37, #f1c40f);
-    color: #000;
-    font-size: 0.6rem;
-    padding: 2px 6px;
-    border-bottom-right-radius: 6px;
-    z-index: 10;
-    font-weight: 900;
-    pointer-events: none;
-    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+/* 移除重複的舊定義並統一管理 */
+.slot-badge-alt {
+    display: none;
 }
 
 /* Summary Section */
@@ -586,7 +574,7 @@
 .summary-header {
     padding: 1rem;
     border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-    font-size: 1rem;
+    font-size: 1.2rem;
     color: var(--primary-gold);
     font-weight: bold;
     text-align: center;
@@ -687,7 +675,7 @@
 @media (max-width: 900px) {
     .equip-linear-wrapper {
         gap: 4px;
-        padding: 10px 2px;
+        padding: 20px 2px;
         flex-wrap: nowrap;
         overflow: visible; /* 關閉捲動 */
         justify-content: center; /* 居中對齊 */
@@ -702,15 +690,16 @@
     }
     .slot-placeholder { font-size: 1.2rem; }
     .slot-label { 
-        font-size: 0.7rem; 
+        font-size: 0.85rem; 
         letter-spacing: 0;
         white-space: nowrap;
+        margin-bottom: 4px;
     }
     .slot-badge {
-        font-size: 8px;
-        padding: 1px 3px;
-        top: -2px;
-        left: -2px;
+        font-size: 11px;
+        padding: 2px 6px;
+        top: 0;
+        left: 0;
     }
 }
 
@@ -735,9 +724,9 @@
     background: rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(212, 175, 55, 0.3);
     color: var(--primary-gold);
-    padding: 6px 15px;
+    padding: 8px 18px;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s;
     display: flex;
@@ -769,7 +758,7 @@
     flex-wrap: wrap;
     gap: 15px;
     background: rgba(25, 30, 35, 0.8);
-    padding: 8px 20px;
+    padding: 15px 25px;
     border-radius: 12px;
     border: 1px solid rgba(212, 175, 55, 0.3);
     backdrop-filter: blur(10px);
@@ -783,7 +772,7 @@
 
 .control-group label {
     color: var(--primary-gold);
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: bold;
     white-space: nowrap;
 }
@@ -945,7 +934,8 @@
     align-items: center;
     gap: 8px;
     transition: all 0.3s;
-    font-size: 0.9rem;
+    font-size: 1rem;
+    font-weight: bold;
 }
 
 .current-hero-display:hover {
@@ -1003,6 +993,7 @@
 .hero-result-name {
     font-weight: bold;
     color: white;
+    font-size: 1rem;
     white-space: nowrap;
 }
 
