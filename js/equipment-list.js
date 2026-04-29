@@ -60,7 +60,7 @@ const EquipmentListComponent = {
                                         <span v-for="tag in selectedItem.category" :key="tag" class="mini-tag" style="padding: 4px 12px; font-size: 0.9rem;">{{ tag }}</span>
                                     </div>
                                     <div class="equip-release" v-if="selectedItem.release !== undefined" style="text-align: center; margin-bottom: 5px; opacity: 0.8;">開放時機: {{ formatRelease(selectedItem.release) }}</div>
-                                    <div class="equip-source" v-if="selectedItem.source" style="text-align: center; margin-bottom: 15px; color: var(--accent-gold); font-size: 0.9rem;">取得來源: {{ selectedItem.source }}</div>
+                                    <div class="equip-source" v-if="selectedItem.source" style="text-align: center; margin-bottom: 15px; color: var(--accent-gold); font-size: 0.9rem;">{{ Array.isArray(selectedItem.release) ? '升級方式' : '取得來源' }}: {{ selectedItem.source }}</div>
                                 </div>
 
                                 <div v-if="selectedItem.table" class="activity-table-container">
@@ -107,7 +107,7 @@ const EquipmentListComponent = {
                                         <div class="modal-attr" v-if="selectedItem.attr">{{ selectedItem.attr }}</div>
                                         <div class="equip-release" v-if="selectedItem.release !== undefined">開放時機: {{ formatRelease(selectedItem.release) }}</div>
                                         <div class="equip-notes" v-if="selectedItem.notes" style="color: #ff6b6b; font-size: 0.85rem; margin-top: 4px;">備註: {{ selectedItem.notes }}</div>
-                                        <div class="equip-source" v-if="selectedItem.source">取得來源: {{ selectedItem.source }}</div>
+                                        <div class="equip-source" v-if="selectedItem.source">{{ Array.isArray(selectedItem.release) ? '升級方式' : '取得來源' }}: {{ selectedItem.source }}</div>
                                     </div>
                                 </div>
                                 <div v-if="selectedItem.effects && selectedItem.effects.length" class="effects-section">
@@ -157,6 +157,9 @@ const EquipmentListComponent = {
         };
 
         const formatRelease = (val) => {
+            if (Array.isArray(val)) {
+                return val.map(v => formatRelease(v)).join(' / ');
+            }
             if (val === 0 || val === '0') return '開服';
             if (val > 0 && val <= 8) return val + '合';
             return val;
@@ -175,7 +178,8 @@ const EquipmentListComponent = {
             list.forEach(item => {
                 if (item.sets) {
                     item.sets.split(' ').forEach(s => {
-                        const rel = item.release !== undefined ? item.release : 99;
+                        let rel = item.release !== undefined ? item.release : 99;
+                        if (Array.isArray(rel)) rel = Math.min(...rel);
                         if (setMap[s] === undefined || rel < setMap[s]) {
                             setMap[s] = rel;
                         }
@@ -205,7 +209,13 @@ const EquipmentListComponent = {
         const filteredItems = computed(() => {
             let list = props.allItems.filter(item => item.group === props.category);
             if (mergeFilter.value !== 'ALL') {
-                list = list.filter(item => item.release === parseInt(mergeFilter.value));
+                const filterVal = parseInt(mergeFilter.value);
+                list = list.filter(item => {
+                    if (Array.isArray(item.release)) {
+                        return item.release.includes(filterVal);
+                    }
+                    return item.release === filterVal;
+                });
             }
             if (sourceFilter.value !== 'ALL') {
                 list = list.filter(item => item.source === sourceFilter.value);

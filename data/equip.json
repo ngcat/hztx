@@ -4,8 +4,11 @@
         "image": "equip001320a2e.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "前軍基礎攻擊+20",
             "前軍基礎攻擊+30",
@@ -38,8 +41,11 @@
         "image": "equip00384dc84.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "紫氣東來",
         "effects": [
             "步兵基礎攻擊+10",
             "若【反擊】達到15級，【反擊】傷害+15%",
@@ -117,8 +123,11 @@
         "image": "equip008af89d4.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            4
+        ],
+        "source": "紫氣東來",
         "effects": [
             "武力+1；女性英雄武力額外+1",
             "魅力+1；女性英雄魅力額外+1",
@@ -148,8 +157,11 @@
         "image": "equip010f448b5.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            5
+        ],
+        "source": "育魂任務",
         "effects": [
             "智力+1",
             "對騎兵傷害+10%",
@@ -165,8 +177,11 @@
         "image": "equip011a7a8aa.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            4
+        ],
+        "source": "紫氣東來",
         "effects": [
             "武力+2；關羽裝備時，武力額外+1",
             "若武力高於對手，遠戰首回合，有50%的機率全軍傷害+30%",
@@ -182,8 +197,11 @@
         "image": "equip012d5a898.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "統御+1，前軍基礎攻擊+10",
             "智力+1；【罡氣】效果額外提升10%",
@@ -199,8 +217,11 @@
         "image": "equip013ea94b9.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            5
+        ],
+        "source": "育魂任務",
         "effects": [
             "部隊在世界中行軍速度+10%",
             "前軍速度+6",
@@ -216,8 +237,11 @@
         "image": "equip014ca996f.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            5
+        ],
+        "source": "育魂任務",
         "effects": [
             "前軍基礎攻擊+10",
             "對步兵傷害+10%",
@@ -264,8 +288,11 @@
         "image": "equip017e1ed64.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            4
+        ],
+        "source": "紫氣東來",
         "effects": [
             "魅力+2，統御+2",
             "部隊在世界中行軍速度+10%",
@@ -281,8 +308,11 @@
         "image": "equip0195f1431.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "部隊在世界中行軍速度+5%",
             "若智力高於對手，受到敵方英雄技能傷害-10%",
@@ -298,8 +328,11 @@
         "image": "equip0207310dc.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "智力+1；文官或全才裝備時，魅力額外+1",
             "遠戰回合，受到敵方後軍傷害-10%",
@@ -330,8 +363,11 @@
         "image": "equip022715e50.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "前軍基礎防禦+20，後軍基礎防禦+10",
             "受到英雄技能傷害-10%",
@@ -347,8 +383,11 @@
         "image": "equip023221fe2.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            4
+        ],
+        "source": "紫氣東來",
         "effects": [
             "魅力+1；文官或全才裝備時，魅力額外+1",
             "魅力+1；若【修養】達到5級，前後軍兵力額外+50",
@@ -381,8 +420,11 @@
         "image": "equip025b29449.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "限定禮包",
         "effects": [
             "智力+2",
             "若【才學】達到5級，【暴烈】可額外無視10%防禦",
@@ -398,8 +440,11 @@
         "image": "equip02669a3dc.png",
         "attr": "",
         "tags": [],
-        "release": 0,
-        "source": "",
+        "release": [
+            0,
+            3
+        ],
+        "source": "紫氣東來",
         "effects": [
             "統御+1",
             "統御+1；英雄等級達到40級以上，統御額外+1",
