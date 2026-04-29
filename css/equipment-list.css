@@ -229,6 +229,12 @@
     white-space: nowrap;
 }
 
+.upgrade-mini-tag {
+    background: rgba(155, 89, 182, 0.2) !important;
+    color: #cd84f1 !important;
+    border-color: rgba(155, 89, 182, 0.5) !important;
+}
+
 .card-attr {
     font-size: 0.75rem;
     color: #aaa;
@@ -327,6 +333,7 @@
 }
 
 .effect-item {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -337,6 +344,24 @@
     color: var(--text-light);
     font-size: 0.95rem;
     transition: all 0.3s ease;
+    margin-top: 5px;
+}
+
+.upgrade-tag {
+    position: absolute;
+    top: -12px;
+    left: -10px;
+    background: #8e44ad;
+    color: #eee;
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 0;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 1;
+    pointer-events: none;
+    border: 1px solid rgba(255,255,255,0.2);
+    line-height: 1;
 }
 
 .effect-item:hover {

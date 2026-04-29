@@ -40,6 +40,8 @@ const EquipmentListComponent = {
                         <div class="card-tags">
                             <span v-for="c in (item.category ? item.category.split(' ') : [])" :key="c" class="mini-tag">{{ c }}</span>
                             <span v-for="s in (item.sets ? item.sets.split(' ') : [])" :key="s" class="mini-tag">{{ s }}</span>
+                            <span v-for="t in (item.tags || [])" :key="t" class="mini-tag upgrade-mini-tag" v-if="t === '可升級'">{{ t }}</span>
+                            <span v-for="t in (item.tags || [])" :key="t" class="mini-tag" v-else>{{ t }}</span>
                         </div>
                     </div>
                 </div>
@@ -102,6 +104,9 @@ const EquipmentListComponent = {
                                                     style="font-size: 0.8rem; padding: 2px 8px;">{{ c }}</span>
                                                 <span v-for="s in (selectedItem.sets ? selectedItem.sets.split(' ') : [])" :key="s" class="mini-tag"
                                                     style="font-size: 0.8rem; padding: 2px 8px;">{{ s }}</span>
+                                                <span v-for="t in (selectedItem.tags || [])" :key="t" class="mini-tag"
+                                                    :class="{'upgrade-mini-tag': t === '可升級'}"
+                                                    style="font-size: 0.8rem; padding: 2px 8px;">{{ t }}</span>
                                             </div>
                                         </div>
                                         <div class="modal-attr" v-if="selectedItem.attr">{{ selectedItem.attr }}</div>
@@ -113,6 +118,9 @@ const EquipmentListComponent = {
                                 <div v-if="selectedItem.effects && selectedItem.effects.length" class="effects-section">
                                     <ul class="effects-list">
                                         <li v-for="(eff, idx) in selectedItem.effects" :key="idx" class="effect-item">
+                                            <div v-if="selectedItem.upgrade && selectedItem.upgrade.includes(idx)" class="upgrade-tag">
+                                                {{ Array.isArray(selectedItem.release) ? selectedItem.release[1] : '' }}合開放
+                                            </div>
                                             {{ eff }}
                                         </li>
                                     </ul>
@@ -202,6 +210,12 @@ const EquipmentListComponent = {
                         if (trimmed) tagsSet.add(trimmed);
                     });
                 }
+                if (item.tags && Array.isArray(item.tags)) {
+                    item.tags.forEach(t => {
+                        const trimmed = t.trim();
+                        if (trimmed) tagsSet.add(trimmed);
+                    });
+                }
             });
             return [...tagsSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
         });
@@ -224,7 +238,12 @@ const EquipmentListComponent = {
                 list = list.filter(item => item.sets && item.sets.split(' ').includes(setFilter.value));
             }
             if (tagFilter.value !== 'ALL') {
-                list = list.filter(item => item.category && item.category.split(' ').some(c => c.trim() === tagFilter.value.trim()));
+                const filterVal = tagFilter.value.trim();
+                list = list.filter(item => {
+                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
+                    const tags = item.tags ? item.tags.map(t => t.trim()) : [];
+                    return cats.includes(filterVal) || tags.includes(filterVal);
+                });
             }
             if (searchQuery.value.trim()) {
                 const keywords = searchQuery.value.toLowerCase().split(/\s+/).filter(Boolean);
@@ -235,6 +254,7 @@ const EquipmentListComponent = {
                         item.sets,
                         item.attr || '',
                         item.notes || '',
+                        ...(item.tags || []),
                         ...(item.effects || [])
                     ].join(' ').toLowerCase();
                     return keywords.every(kw => haystack.includes(kw));
