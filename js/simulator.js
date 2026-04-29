@@ -399,12 +399,8 @@ const SimulatorComponent = {
 
                 if (isIdentityKw) {
                     // 身分類關鍵字：
-                    // 1. 如果關鍵字是「男性」，且有「受到」，代表是敵方性別，視為戰鬥情境
-                    // 2. 如果是「對、針對、敵方」等字眼，一律視為戰鬥情境
-                    const isEnemyGender = (kw === '男性' && segment.includes('受到' + kw)) || 
-                                         (kw === '女性' && (segment.includes('對' + kw) || segment.includes('對陣' + kw))); // 對女性/對陣女性
-                    
-                    isBattleOrStat = isEnemyGender || new RegExp(`(?:對|針對|對戰|對陣|面對|敵方|敵軍)${kw}`).test(segment);
+                    // 1. 如果是針對對手的判定（受到、對、針對...），一律視為戰鬥情境，不觸發自身身分檢查
+                    isBattleOrStat = new RegExp(`(?:對|針對|對戰|對陣|面對|敵方|敵軍|受到)${kw}`).test(segment);
                 } else {
                     // 兵種或其他關鍵字：維持較廣的判定（包含「受到」或「關鍵字+屬性」）
                     isBattleOrStat = !isHeroRequirement && (
