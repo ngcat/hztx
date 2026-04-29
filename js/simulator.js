@@ -421,8 +421,8 @@ const SimulatorComponent = {
                     return cond; 
                 }
 
-                // 兵力、血量等戰鬥狀態條件預設達成
-                if (/兵力|血量|不足|低於|少於|超過|高於/.test(segment)) return false;
+                // 兵力、血量等戰鬥狀態或特殊職位條件預設達成
+                if (/兵力|血量|不足|低於|少於|超過|高於|主將|副將/.test(segment)) return false;
 
                 // 如果是身分要求但條件不符，回傳 true 讓外層返回 false
                 return !cond;
@@ -463,8 +463,8 @@ const SimulatorComponent = {
             const nameMatch = segment.match(/(.+?)裝備時/);
             if (nameMatch) {
                 const requiredHero = nameMatch[1].trim();
-                // 排除職業關鍵字、性別、覺醒、輪迴等狀態詞，避免誤判為英雄姓名
-                const isClassKeyword = /文官|全才|武將|男性|女性|巾幗/.test(requiredHero);
+                // 排除職業關鍵字、性別、覺醒、輪迴、職位等狀態詞，避免誤判為英雄姓名
+                const isClassKeyword = /文官|全才|武將|男性|女性|巾幗|主將|副將/.test(requiredHero);
                 if (!isClassKeyword && !requiredHero.includes('已輪迴') && !requiredHero.includes('已覺醒')) {
                     if (!requiredHero.includes(heroState.value.selectedHeroName)) return false;
                 }
@@ -541,7 +541,7 @@ const SimulatorComponent = {
                             }
                         });
 
-                        const parts = eff.split(/；|;|(?:，|,)(?![^；;]*(?:受到|對|敵方|敵軍))(?=[^；;]*(?:裝備時|每裝備|品質達到|身份|等級|武將|文官|全才|男性|女性))/).filter(p => p.trim());
+                        const parts = eff.split(/；|;|(?:，|,)(?![^；;]*(?:受到|對|敵方|敵軍|分別獲得))(?=[^；;]*(?:裝備時|每裝備|品質達到|身份|等級|武將|文官|全才|男性|女性|分別獲得))/).filter(p => p.trim());
 
                         parts.forEach(part => {
                             // 處理「分別獲得」邏輯 (例如：武將/文官/全才裝備時，分別獲得武力+3/智力+3/統御+3)
@@ -565,6 +565,9 @@ const SimulatorComponent = {
                             }
 
                             if (!checkSegment(part, item.name)) return;
+
+                            // 排除動態屬性加成 (例如：每點武力... 每20點智力...)，避免誤計入四維
+                            if (part.includes('每點') || /每\d+點/.test(part)) return;
 
                             const cnToNum = (s) => {
                                 const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
