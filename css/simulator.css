@@ -78,7 +78,7 @@
 }
 
 
-/* Removed Pentagon Positions */
+
 
 .slot-label {
     font-size: 1.1rem;
@@ -161,6 +161,93 @@
 .equip-slot.token_p .slot-badge {
     background: linear-gradient(135deg, var(--primary-red), #600);
     color: white;
+}
+
+/* 副將位特殊樣式 (深青色實心框) */
+.equip-slot.rear_hero .slot-card,
+.equip-slot.front_hero .slot-card {
+    border: 2px solid #008080 !important;
+    background: rgba(0, 128, 128, 0.15) !important;
+    box-shadow: 0 0 15px rgba(0, 128, 128, 0.3);
+}
+
+.equip-slot.rear_hero .slot-badge,
+.equip-slot.front_hero .slot-badge {
+    background: linear-gradient(135deg, #008080, #004d4d) !important;
+}
+
+.equip-slot.rear_hero .plus-icon,
+.equip-slot.front_hero .plus-icon {
+    color: rgba(0, 128, 128, 0.6) !important;
+}
+
+.equip-slot.rear_hero .slot-label,
+.equip-slot.front_hero .slot-label {
+    color: #008080 !important;
+}
+
+/* 副將頭像放大並置頂 */
+.lieutenant-hero-img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: top !important;
+    transform: scale(2) translateY(-5px); /* 放大 2 倍並向上偏移 5px */
+    transform-origin: top center;
+    padding: 0 !important; 
+    transition: transform 0.3s ease;
+}
+
+.slot-card:hover .lieutenant-hero-img {
+    transform: scale(2.2) translateY(-5px); 
+}
+
+.lieutenant-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: #00ffff !important;
+    font-size: 0.75rem !important;
+    padding: 3px 0 !important;
+    text-align: center;
+    z-index: 5;
+    border-top: 1px solid rgba(0, 128, 128, 0.5);
+}
+
+.equip-slot.hunyu .plus-icon {
+    color: rgba(100, 80, 255, 0.4);
+}
+
+/* 魂玉/副將行佈局 */
+.souljade-row {
+    display: flex;
+    justify-content: flex-start !important;
+    gap: 12px;
+    padding-left: calc(50% - 286px); /* 573px / 2 = 286.5px, 居中對齊的起始點 */
+}
+
+.souljade-row .slot-card {
+    border-style: dashed;
+    background: rgba(100, 80, 255, 0.05);
+    border-color: rgba(100, 80, 255, 0.3);
+}
+
+
+
+.equip-slot.hunyu {
+    margin-left: 117px; /* 跳過第 3 格 (105px + 12px gap) */
+}
+
+@media (max-width: 900px) {
+    .souljade-row {
+        padding-left: 0 !important;
+        justify-content: center !important;
+    }
+    .equip-slot.hunyu {
+        margin-left: 0 !important;
+    }
 }
 
 .remove-item {
@@ -476,9 +563,105 @@
     font-size: 0.85rem;
 }
 
-/* 移除重複的舊定義並統一管理 */
-.slot-badge-alt {
-    display: none;
+
+
+/* Hero Search Styles */
+.hero-selector-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.hero-autocomplete-container {
+    position: relative;
+    flex: 1;
+}
+
+.current-hero-display {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.5);
+    border-radius: 6px;
+    padding: 8px 15px;
+    color: var(--primary-gold);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 150px;
+    transition: all 0.2s;
+}
+
+.current-hero-display:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: var(--primary-gold);
+}
+
+.hero-search-popover {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 250px;
+    background: rgba(20, 25, 30, 0.98);
+    border: 1px solid var(--primary-gold);
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    backdrop-filter: blur(10px);
+}
+
+.hero-results-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.hero-result-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.hero-result-item:hover {
+    background: rgba(212, 175, 55, 0.2);
+}
+
+.hero-result-name {
+    color: #fff;
+    font-weight: 500;
+}
+
+.hero-result-tags {
+    color: #888;
+    font-size: 0.75rem;
+}
+
+.hero-search-popover input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    color: white;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    outline: none;
+    font-size: 0.9rem;
+}
+
+.hero-search-popover input:focus {
+    border-color: var(--primary-gold);
+    background: rgba(212, 175, 55, 0.1);
+}
+
+
+
+/* 確保 slot 容器有定位基準 */
+.equip-slot {
+    position: relative;
 }
 
 /* Summary Section */
@@ -892,8 +1075,18 @@
 
 .inactive-segment {
     text-decoration: line-through;
-    opacity: 0.5;
-    color: #888;
+    text-decoration-color: rgba(239, 68, 68, 0.5); /* 淡淡的紅色刪除線 */
+    opacity: 0.6;
+    color: #94a3b8;
+}
+
+.inactive-tag {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-left: 5px;
+    font-weight: normal;
+    text-decoration: none !important;
+    display: inline-block;
 }
 
 .hero-selector-group {
