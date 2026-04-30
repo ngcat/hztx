@@ -335,7 +335,7 @@ body::after {
 
 
 .tag-良才 {
-    background: linear-gradient(135deg, #00b894, #006266);
+    background: linear-gradient(135deg, #a0522d, #5c2c16);
 }
 
 .tag-國士 {
@@ -361,9 +361,9 @@ body::after {
 }
 
 .tag-傳奇 {
-    background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+    background: linear-gradient(135deg, #00b894, #006266);
     color: #fff;
-    border-color: rgba(108, 92, 231, 0.5);
+    border-color: rgba(0, 184, 148, 0.5);
 }
 
 .loader {
@@ -450,8 +450,8 @@ body::after {
 }
 
 .modal-title {
-    margin-top: 1.5rem;
-    font-size: 2rem;
+    margin-top: 0;
+    font-size: 1.3rem;
     color: var(--primary-gold);
     font-weight: bold;
 }

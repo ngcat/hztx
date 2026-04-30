@@ -140,6 +140,16 @@
     animation: cardEntrance 0.6s ease-out backwards;
 }
 
+.card-img-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
 @keyframes cardEntrance {
     from {
         opacity: 0;
@@ -157,7 +167,7 @@
 .card:nth-child(4n) { animation-delay: 0.2s; }
 
 .card.hero-card {
-    aspect-ratio: 2/3;
+    aspect-ratio: 1/1;
     padding: 0;
 }
 
@@ -185,6 +195,14 @@
 
 .card:hover img:not(.hero-img) {
     transform: scale(1.1);
+}
+
+.grayscale-img {
+    filter: brightness(0);
+}
+
+.silhouette-bg {
+    background: var(--card-bg) !important;
 }
 
 .card-info {
@@ -220,13 +238,16 @@
 }
 
 .mini-tag {
+    display: inline-block;
     background: rgba(212, 175, 55, 0.2);
     color: var(--primary-gold);
-    font-size: 0.65rem;
-    padding: 1px 4px;
-    border-radius: 2px;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 4px;
     border: 1px solid rgba(212, 175, 55, 0.3);
     white-space: nowrap;
+    margin-right: 4px;
+    margin-bottom: 4px;
 }
 
 .upgrade-mini-tag {
@@ -370,31 +391,90 @@
 }
 
 /* Hero Detail Panel */
+/* Hero Detail Panel */
 .hero-modal {
-    max-width: 700px !important;
+    width: 500px;
+    max-width: 95% !important;
     max-height: 90vh !important;
     overflow-y: auto;
+    background: transparent;
+    border: none;
+    padding: 0;
 }
 
 .hero-detail-panel {
+    background: rgba(15, 20, 25, 0.98);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid var(--primary-gold);
     width: 100%;
-    padding: 20px;
+    position: relative;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: var(--primary-gold);
+    font-size: 2rem;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 1;
+    padding: 5px;
+    transition: color 0.3s;
+}
+
+.modal-close-btn:hover {
+    color: #fff;
+}
+
+@media (max-width: 600px) {
+    .hero-modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100vh;
+        max-height: 100vh !important;
+        border-radius: 0;
+    }
+    .hero-detail-panel {
+        padding: 10px;
+        border-radius: 0;
+        border: none;
+        min-height: 100vh;
+    }
+    .hero-detail-img-container {
+        width: 120px;
+        height: 120px;
+    }
 }
 
 .hero-detail-header {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     align-items: flex-start;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+.hero-detail-img-container {
+    width: 180px;
+    height: 180px;
+    border: 1px solid var(--primary-gold);
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    background: var(--card-bg);
 }
 
 .hero-detail-img {
-    width: 180px;
-    height: 270px;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-    border: 2px solid var(--primary-gold);
-    border-radius: 8px;
-    flex-shrink: 0;
+    object-position: top;
+    transform: scale(1.45);
+    transform-origin: top center;
 }
 
 .hero-detail-right {
@@ -403,15 +483,10 @@
 }
 
 .hero-flag {
-    display: inline-block;
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     color: var(--primary-gold);
-    background: rgba(212, 175, 55, 0.1);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    padding: 2px 12px;
-    border-radius: 4px;
-    margin-top: 4px;
+    margin-bottom: 5px;
 }
 
 /* Stat Bars */
@@ -466,8 +541,8 @@
 
 /* Hero Sections & Chips */
 .hero-section {
-    margin-top: 16px;
-    padding: 14px;
+    margin-top: 10px;
+    padding: 10px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(212, 175, 55, 0.15);
     border-radius: 8px;
@@ -477,14 +552,39 @@
     font-size: 1rem;
     color: var(--primary-gold);
     font-weight: bold;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     letter-spacing: 0.1rem;
+}
+
+.talent-title {
+    color: #cd84f1 !important;
+    font-size: 1.2rem;
 }
 
 .hero-section-text {
     color: #ccc;
     font-size: 0.85rem;
-    line-height: 1.7;
+    line-height: 1.4;
+}
+
+.awakening-text {
+    color: #ff9f43 !important;
+}
+
+.holy-awakening-text {
+    color: #00ffe5 !important;
+}
+
+.reincarnation-title {
+    color: #fff200 !important;
+}
+
+.reincarnation-text {
+    color: #00d1ff !important;
+}
+
+.fate-title, .fate-text {
+    color: #2ecc71 !important;
 }
 
 .skill-chips {
@@ -596,9 +696,9 @@
 
 @media (max-width: 768px) {
     .filter-btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
-    .hero-detail-header { flex-direction: column; align-items: center; }
-    .hero-detail-img { width: 140px; height: 210px; }
-    .hero-detail-right { text-align: center; }
+    .hero-detail-header { flex-direction: row; gap: 12px; align-items: flex-start; }
+    .hero-detail-img-container { width: 120px; height: 120px; }
+    .hero-detail-right { text-align: left; }
     .modal-overlay { padding: 8px; }
     .modal-content { max-width: 100%; }
     .modal-details { padding: 12px; margin-top: 10px; }
@@ -606,6 +706,7 @@
     .equip-header { gap: 12px; }
     .equip-img { width: 80px; height: 80px; }
     .effect-item { padding: 6px 10px; font-size: 0.88rem; }
+    .mini-tag { font-size: 0.7rem; padding: 1px 6px; }
 }
 
 @media (max-width: 800px) {
@@ -630,7 +731,7 @@
 }
 
 @media (max-width: 600px) {
-    .gallery { grid-template-columns: repeat(2, 1fr) !important; gap: 1rem; padding: 0.5rem; }
+    .gallery { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem; padding: 0.25rem; }
     .card { padding: 10px; }
     .select-row .merge-select { flex: 1 1 calc(50% - 10px); min-width: 120px; }
 }
