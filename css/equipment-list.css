@@ -281,6 +281,7 @@
     width: 500px;
     max-width: 100%;
     position: relative;
+    cursor: default;
 }
 
 .equip-header {
@@ -413,6 +414,7 @@
     height: 100%;
     overflow: hidden;
     /* 由內部的 hero-scroll-area 捲動 */
+    cursor: default;
 }
 
 .hero-scroll-area {
@@ -454,6 +456,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    user-select: none;
 }
 
 .modal-share-btn:hover {
@@ -480,6 +483,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    user-select: none;
 }
 
 .modal-close-btn:hover {

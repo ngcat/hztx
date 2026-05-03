@@ -7,7 +7,7 @@
     display: grid;
     grid-template-columns: 1fr 450px;
     gap: 20px;
-    height: 85vh; /* 鎖定高度，防止被內容撐開 */
+    height: 85%; /* 鎖定高度，防止被內容撐開 */
     min-height: 600px;
     align-items: stretch;
     animation: fadeIn 0.5s ease-out;
@@ -39,6 +39,8 @@
     padding: 30px 0;
     flex-wrap: nowrap; /* 強制單行 */
     background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+    user-select: none;
+    cursor: default;
 }
 
 .equip-slot {
@@ -51,7 +53,7 @@
 }
 
 .equip-slot.active {
-    z-index: 5000; /* 高於 simulator-controls (3000) */
+    z-index: 4000; /* 低於 top-nav (5000) */
 }
 
 @media (max-width: 900px) {
@@ -285,7 +287,7 @@
     border-radius: 12px;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.2);
     margin-top: 10px;
-    z-index: 5100;
+    z-index: 4100; /* 低於 top-nav (5000) */
     padding: 15px; /* 將 padding 移到最外層容器 */
     box-sizing: border-box; /* 確保寬度包含 padding */
     backdrop-filter: blur(20px);
@@ -767,7 +769,7 @@
         right: 0;
         width: 320px;
         max-width: 85%;
-        height: calc(100vh - 60px);
+        height: calc(100% - 60px);
         z-index: 6000;
         transform: translateX(105%);
         transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -806,7 +808,7 @@
         top: 60px;
         left: 0;
         width: 100%;
-        height: calc(100vh - 60px);
+        height: calc(100% - 60px);
         background: rgba(0,0,0,0.7);
         backdrop-filter: blur(4px);
         z-index: 5000;
