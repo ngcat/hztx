@@ -75,11 +75,10 @@ const EquipmentListComponent = {
             <teleport to="body">
                 <div v-if="selectedItem" class="modal-overlay" @click.self="selectedItem = null">
                     <div class="modal-content" :class="{ 'hero-modal': selectedItem.group === 'hero' || selectedItem.talentName, 'activity-modal': selectedItem.group === 'act' }">
-                        <div class="close-btn" @click="selectedItem = null">✕</div>
-
-                        <!-- Activity Detail Panel -->
                         <template v-if="selectedItem.group === 'act'">
                             <div class="activity-detail-panel">
+                                <button class="modal-close-btn" @click="selectedItem = null">×</button>
+                                <button class="modal-share-btn" @click="shareItem(selectedItem)" title="分享此項目"><i class="fas fa-share-alt"></i></button>
                                 <div class="activity-header">
                                     <div class="modal-title">{{ selectedItem.name }}</div>
                                     <div class="card-tags" style="justify-content: center; margin-bottom: 8px;">
@@ -121,6 +120,7 @@ const EquipmentListComponent = {
                         <template v-else-if="selectedItem.group === 'hero'">
                             <div v-if="selectedItem" class="hero-detail-panel">
                                 <button class="modal-close-btn" @click="selectedItem = null">×</button>
+                                <button class="modal-share-btn" @click="shareItem(selectedItem)" title="分享此項目"><i class="fas fa-share-alt"></i></button>
                                 <div class="hero-detail-header">
                                     <div class="hero-detail-img-container" :class="{'silhouette-bg': !selectedItem.image}">
                                         <div :class="['tag', 'tag-' + getCardTag(selectedItem)]">{{ getCardTag(selectedItem) }}</div>
@@ -141,66 +141,69 @@ const EquipmentListComponent = {
                                     </div>
                                 </div>
 
-                                <div v-if="selectedItem.talents && selectedItem.talents.length" class="hero-section">
-                                    <div class="hero-section-title talent-title">天賦【{{ selectedItem.talent_name }}】</div>
-                                    <div class="hero-section-text">
-                                        <div v-for="(t, idx) in selectedItem.talents" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
-                                            <span style="position: absolute; left: 0; color: var(--primary-gold);">◆</span> {{ t }}
+                                <div class="hero-scroll-area">
+                                    <div v-if="selectedItem.talents && selectedItem.talents.length" class="hero-section">
+                                        <div class="hero-section-title talent-title">天賦【{{ selectedItem.talent_name }}】</div>
+                                        <div class="hero-section-text">
+                                            <div v-for="(t, idx) in selectedItem.talents" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
+                                                <span style="position: absolute; left: 0; color: var(--primary-gold);">◆</span> {{ t }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div v-if="selectedItem.legendary_attr" class="hero-section">
-                                    <div class="hero-section-title" style="color: #00ffcc !important;">【傳奇屬性】</div>
-                                    <div class="hero-section-text" style="color: #00ff00; font-weight: bold; font-size: 0.85rem;">{{ selectedItem.legendary_attr }}</div>
-                                </div>
+                                    <div v-if="selectedItem.legendary_attr" class="hero-section">
+                                        <div class="hero-section-title" style="color: #00ffcc !important;">【傳奇屬性】</div>
+                                        <div class="hero-section-text" style="color: #00ff00; font-weight: bold; font-size: 0.85rem;">{{ selectedItem.legendary_attr }}</div>
+                                    </div>
 
-                                <div v-if="selectedItem.awakening && selectedItem.awakening.length" class="hero-section">
-                                    <div class="hero-section-title reincarnation-title">【覺醒】特殊天賦</div>
-                                    <div class="hero-section-text awakening-text">
-                                        <div v-for="(a, idx) in selectedItem.awakening" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
-                                            <span style="position: absolute; left: 0; color: #ff9f43;">◆</span> {{ a }}
+                                    <div v-if="selectedItem.awakening && selectedItem.awakening.length" class="hero-section">
+                                        <div class="hero-section-title reincarnation-title">【覺醒】特殊天賦</div>
+                                        <div class="hero-section-text awakening-text">
+                                            <div v-for="(a, idx) in selectedItem.awakening" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
+                                                <span style="position: absolute; left: 0; color: #ff9f43;">◆</span> {{ a }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div v-if="selectedItem.holy_awakening && selectedItem.holy_awakening.length" class="hero-section">
-                                    <div class="hero-section-title reincarnation-title">【聖覺醒】特殊天賦</div>
-                                    <div class="hero-section-text holy-awakening-text">
-                                        <div v-for="(h, idx) in selectedItem.holy_awakening" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
-                                            <span style="position: absolute; left: 0; color: #00ffe5;">◆</span> {{ h }}
+                                    <div v-if="selectedItem.holy_awakening && selectedItem.holy_awakening.length" class="hero-section">
+                                        <div class="hero-section-title reincarnation-title">【聖覺醒】特殊天賦</div>
+                                        <div class="hero-section-text holy-awakening-text">
+                                            <div v-for="(h, idx) in selectedItem.holy_awakening" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
+                                                <span style="position: absolute; left: 0; color: #00ffe5;">◆</span> {{ h }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div v-if="selectedItem.reincarnation && selectedItem.reincarnation.length" class="hero-section">
-                                    <div class="hero-section-title reincarnation-title">【輪回】特殊天賦</div>
-                                    <div class="hero-section-text reincarnation-text">
-                                        <div v-for="(r, idx) in selectedItem.reincarnation" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
-                                            <span style="position: absolute; left: 0; color: #00d1ff;">◆</span> {{ r }}
+                                    <div v-if="selectedItem.reincarnation && selectedItem.reincarnation.length" class="hero-section">
+                                        <div class="hero-section-title reincarnation-title">【輪回】特殊天賦</div>
+                                        <div class="hero-section-text reincarnation-text">
+                                            <div v-for="(r, idx) in selectedItem.reincarnation" :key="idx" style="margin-bottom: 8px; position: relative; padding-left: 15px;">
+                                                <span style="position: absolute; left: 0; color: #00d1ff;">◆</span> {{ r }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div v-if="selectedItem.fates && selectedItem.fates.length" class="hero-section">
-                                    <div class="hero-section-title fate-title">宿命</div>
-                                    <div class="hero-section-text fate-text">
-                                        <div v-for="(f, idx) in selectedItem.fates" :key="idx" style="margin-bottom: 5px;">
-                                            {{ f }}
+                                    <div v-if="selectedItem.fates && selectedItem.fates.length" class="hero-section">
+                                        <div class="hero-section-title fate-title">宿命</div>
+                                        <div class="hero-section-text fate-text">
+                                            <div v-for="(f, idx) in selectedItem.fates" :key="idx" style="margin-bottom: 5px;">
+                                                {{ f }}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div v-if="selectedItem.bio" class="hero-section" style="background: rgba(0,0,0,0.2);">
-                                    <div class="hero-section-title">傳記</div>
-                                    <div class="hero-section-text" style="font-style: italic; opacity: 0.9;">{{ selectedItem.bio }}</div>
+                                    <div v-if="selectedItem.bio" class="hero-section" style="background: rgba(0,0,0,0.2);">
+                                        <div class="hero-section-title">傳記</div>
+                                        <div class="hero-section-text" style="font-style: italic; opacity: 0.9;">{{ selectedItem.bio }}</div>
+                                    </div>
                                 </div>
                             </div>
                         </template>
 
-                        <!-- Equipment Detail Panel -->
                         <template v-else>
                             <div class="modal-details equip-panel">
+                                <button class="modal-close-btn" @click="selectedItem = null">×</button>
+                                <button class="modal-share-btn" @click="shareItem(selectedItem)" title="分享此項目"><i class="fas fa-share-alt"></i></button>
                                 <div class="equip-header">
                                     <img :src="selectedItem.image ? 'img/' + selectedItem.image : 'img/unknown.png'" alt="Preview" class="equip-img" @error="$event.target.src = 'img/unknown.png'">
                                     <div class="equip-info-top">
@@ -240,7 +243,7 @@ const EquipmentListComponent = {
         </div>
     `,
     setup(props) {
-        const { ref, computed, watch } = Vue;
+        const { ref, computed, watch, onMounted } = Vue;
 
         // --- 內部狀態 ---
         const searchQuery = ref('');
@@ -265,6 +268,7 @@ const EquipmentListComponent = {
             frontFilter.value = 'ALL';
             rearFilter.value = 'ALL';
 
+            checkUrlParams();
         });
 
         // --- 工具函數 ---
@@ -287,6 +291,55 @@ const EquipmentListComponent = {
             if (val > 0 && val <= 8) return val + '合';
             return val;
         };
+
+        const shareItem = (item) => {
+            if (!item) return;
+            const baseUrl = window.location.origin + window.location.pathname;
+            const shareUrl = `${baseUrl}#${props.category}?n=${item.name}`;
+            
+            Utils.copyToClipboard(shareUrl).then(() => {
+                alert('分享連結已複製到剪貼簿！');
+            }).catch(() => {
+                window.prompt('複製失敗，請手動複製連結：', shareUrl);
+            });
+        };
+
+        const checkUrlParams = () => {
+            const hash = window.location.hash;
+            if (hash.includes('?n=')) {
+                const params = new URLSearchParams(hash.split('?')[1]);
+                const itemName = params.get('n');
+                if (itemName) {
+                    const item = props.allItems.find(i => i.group === props.category && i.name === itemName);
+                    if (item) {
+                        selectedItem.value = item;
+                    }
+                }
+            }
+        };
+
+        watch(selectedItem, (newVal) => {
+            if (newVal) {
+                if (!window.history.state || !window.history.state.modalOpen) {
+                    window.history.pushState({ modalOpen: true }, '');
+                }
+            }
+        });
+
+        onMounted(() => {
+            checkUrlParams();
+            window.addEventListener('hashchange', checkUrlParams);
+            window.addEventListener('popstate', () => {
+                if (selectedItem.value) {
+                    selectedItem.value = null;
+                }
+            });
+        });
+
+        const { onUnmounted } = Vue;
+        onUnmounted(() => {
+            window.removeEventListener('hashchange', checkUrlParams);
+        });
 
         // --- 過濾邏輯 ---
         const uniqueSources = computed(() => {
@@ -460,8 +513,9 @@ const EquipmentListComponent = {
         return {
             searchQuery, mergeFilter, sourceFilter, typeFilter, setFilter, tagFilter, 
             frontFilter, rearFilter, selectedItem,
-            uniqueSources, uniqueSets, uniqueTags, filteredItems, activityTable,
-            getCardTag, formatRelease
+            uniqueSources, uniqueSets, uniqueTags, filteredItems,
+            getCardTag, formatRelease, selectedItem, activityTable,
+            shareItem
         };
     }
 };

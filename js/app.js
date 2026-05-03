@@ -1,5 +1,38 @@
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
+// --- 全域工具函數 ---
+window.Utils = {
+    copyToClipboard(text) {
+        return new Promise((resolve, reject) => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(resolve).catch(() => {
+                    this.fallbackCopy(text) ? resolve() : reject();
+                });
+            } else {
+                this.fallbackCopy(text) ? resolve() : reject();
+            }
+        });
+    },
+    fallbackCopy(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textArea);
+            return successful;
+        } catch (err) {
+            document.body.removeChild(textArea);
+            return false;
+        }
+    }
+};
+
 createApp({
     components: {
         'equipment-list': EquipmentListComponent,
@@ -57,7 +90,7 @@ createApp({
 
         // --- 路由功能 ---
         const handleRouting = () => {
-            const hash = window.location.hash.replace('#', '');
+            const hash = window.location.hash.slice(1).split('?')[0];
             const hasConfig = window.location.search.includes('c=') || window.location.hash.includes('c=');
             
             // 優先級：明確的 Hash > 分享參數

@@ -1423,16 +1423,12 @@ const SimulatorComponent = {
                     const baseUrl = window.location.origin + window.location.pathname;
                     const shareUrl = `${baseUrl}#sim?c=${encoded}`;
 
-                    // 備援機制：如果無法使用剪貼簿 API (如 Android 無痕模式)，則改用 prompt
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        navigator.clipboard.writeText(shareUrl).then(() => {
-                            alert('配置連結已複製到剪貼簿！');
-                        }).catch(() => {
-                            window.prompt('複製失敗，請手動複製下方連結：', shareUrl);
-                        });
-                    } else {
-                        window.prompt('您的瀏覽器不支援自動複製，請手動複製下方連結：', shareUrl);
-                    }
+                    // 備援機制：如果無法使用剪貼簿 API (如 Android 無痕模式)，則自動切換至手動複製
+                    Utils.copyToClipboard(shareUrl).then(() => {
+                        alert('配置連結已複製到剪貼簿！');
+                    }).catch(() => {
+                        window.prompt('複製失敗，請手動複製下方連結：', shareUrl);
+                    });
                 } catch (e) {
                     console.error('分享失敗', e);
                     alert('分享失敗，請稍後再試。');
