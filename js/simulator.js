@@ -4,12 +4,451 @@
 const SimulatorComponent = {
     props: ['allItems'],
     setup(props) {
+        const EFFECT_SPLIT_REGEX = /(；|;|(?<!時)(?:，|,)(?=[^；;]*?裝備時))/;
         const { ref, computed, watch, onMounted, onUnmounted, toRef } = Vue;
         const allItems = toRef(props, 'allItems');
+
+        // --- 核心運算邏輯 (無狀態同步版) ---
+        const getEquippedItemsSync = (equipConfig) => {
+            const items = [];
+            Object.entries(equipConfig).forEach(([key, val]) => {
+                if (!val) return;
+                if (key.endsWith('_p')) {
+                    if (val.item && val.effectIdx >= 0) {
+                        // 使用原型繼承保留所有資料鏈，僅覆蓋需要變動的部分
+                        const partialItem = Object.create(val.item);
+                        partialItem.name = val.item.name;
+                        partialItem.effects = [val.item.effects[val.effectIdx]];
+                        partialItem.isPartial = true;
+                        partialItem.parentName = val.item.name;
+                        partialItem.slotKey = key;
+                        items.push(partialItem);
+                    }
+                } else if (key === 'rear_hero' || key === 'front_hero') {
+                    items.push({ name: val, category: '副將' });
+                } else {
+                    items.push(val);
+                }
+            });
+            return items;
+        };
+        const checkSegmentSync = (segment, sourceItemName, equipConfig) => {
+            if (!segment || typeof segment !== 'string') return true;
+            const equippedItems = getEquippedItemsSync(equipConfig);
+
+            // 1. 過濾出所有「非觀察者」裝備 (不含「裝備5件金色品質」詞條)
+            const normalItems = equippedItems.filter(item => {
+                return !(item.effects || []).some(eff => typeof eff === 'string' && eff.includes('裝備5件金色品質'));
+            });
+
+            // 2. 預計算品質與套裝計數
+            const goldCount = normalItems.filter(item => item.name && !item.name.includes('紫色')).length;
+            const setCounts = {};
+            normalItems.forEach(item => {
+                if (item.sets) {
+                    item.sets.split(' ').forEach(s => { if (s.trim()) setCounts[s.trim()] = (setCounts[s.trim()] || 0) + 1; });
+                }
+            });
+
+            // 3. 解析需求並判斷
+            const countMatch = segment.match(/裝備\s*(\d+)\s*件(金色品質)?\s*(.+?)(?:套|時|$)/);
+            if (countMatch) {
+                const required = parseInt(countMatch[1]);
+                const isGoldReq = !!countMatch[2];
+                const rawSetName = (countMatch[3] || '').trim();
+                const cleanedRequiredSet = cleanName(rawSetName);
+                let currentCount = 0;
+
+                if (cleanedRequiredSet && cleanedRequiredSet !== '金色' && cleanedRequiredSet !== '品質') {
+                    Object.keys(setCounts).forEach(s => {
+                        if (cleanName(s).includes(cleanedRequiredSet) || cleanedRequiredSet.includes(cleanName(s))) {
+                            currentCount += setCounts[s]; // 改為累加，防止名稱不一導致覆蓋
+                        }
+                    });
+                } else if (isGoldReq) {
+                    currentCount = goldCount;
+                }
+
+                // 直接判斷加總後的數量
+                if (currentCount < required) return false;
+            }
+
+            // 4. 同時上陣/裝備判定 (使用完整名單，因為英雄不屬於裝備觀察者)
+            const equippedNames = new Set(equippedItems.map(i => i.name));
+            if (equipConfig.rear_hero) equippedNames.add(equipConfig.rear_hero);
+            if (equipConfig.front_hero) equippedNames.add(equipConfig.front_hero);
+
+            if (segment.includes('同時上陣') || segment.includes('同時裝備') || segment.includes('必須含有')) {
+                const bracketMatch = segment.match(/\(([^)]+)\)/);
+                const pairMatch = segment.match(/(?:同時裝備|必須含有|同時上陣)\s*(?:【)?([^，；。）】\s]+)(?:】)?/);
+                const targets = [];
+                if (bracketMatch) targets.push(bracketMatch[1].trim());
+                if (pairMatch) targets.push(pairMatch[1].trim());
+                if (targets.length > 0) {
+                    if (!targets.some(name => name.includes('件') || equippedNames.has(name))) return false;
+                }
+            }
+            if (segment.includes('前軍副將') && sourceItemName === 'rear_hero') return false;
+            if (segment.includes('後軍副將') && sourceItemName === 'front_hero') return false;
+            const lieutTypeMatch = segment.match(/作為(步兵|騎兵|弓兵|方士)副將時/);
+            if (lieutTypeMatch && (sourceItemName === 'front_hero' || sourceItemName === 'rear_hero')) {
+                const reqs = lieutenantRequirements.value;
+                const slotTypes = sourceItemName === 'front_hero' ? reqs.front : reqs.rear;
+                if (!slotTypes.includes(lieutTypeMatch[1])) return false;
+            }
+            if (/作為男性(英雄的)?副將時/.test(segment) && heroState.value.gender !== '男性') return false;
+            if (/作為女性(英雄的)?副將時/.test(segment) && heroState.value.gender !== '女性') return false;
+            const heroCheck = (kw, cond) => {
+                if (!segment.includes(kw)) return false;
+
+                // 排除描述性文字：如果「文官/武將/全才」後面接的是「類英雄」或「類技能」，不視為身分限制
+                if (/文官|武將|全才/.test(kw) && new RegExp(`${kw}(類英雄|類技能|類技|類屬性)`).test(segment)) {
+                    return false;
+                }
+
+                const isHeroRequirement = (new RegExp(`${kw}.*裝備時`).test(segment) ||
+                    segment.includes('攜帶' + kw) ||
+                    segment.includes('帶領' + kw)) &&
+                    !segment.includes('敵方') &&
+                    !segment.includes('敵軍') &&
+                    !segment.includes('我方');
+                const isIdentityKw = /男性|女性|傳奇|國士|巾幗|名將|良才/.test(kw);
+                let isBattleOrStat = false;
+                if (isIdentityKw) {
+                    isBattleOrStat = new RegExp(`(?:對|針對|對戰|對陣|面對|敵方|敵軍|受到)${kw}`).test(segment);
+                } else {
+                    isBattleOrStat = !isHeroRequirement && (
+                        new RegExp(`(?:對|受到|針對|對戰|對陣|面對|敵方|敵軍)${kw}|${kw}.*(?:傷害|免傷|攻擊|防禦|兵力|速度|武力|智力|魅力|統御|格擋|保全|士兵|標記|抗性|狀態|幾率|機率)`).test(segment) ||
+                        segment.includes('敵方') || segment.includes('敵軍')
+                    );
+                }
+                if (isHeroRequirement) return !cond;
+                if (isBattleOrStat) return false;
+                if (segment.includes('非' + kw) || segment.includes('不為' + kw)) return cond;
+                if (segment.includes('副將')) { if (heroState.value.isLieutenant) return true; return false; }
+                if (/兵力|血量|不足|低於|少於|超過|高於|主將/.test(segment)) return false;
+                return !cond;
+            };
+
+            if (heroCheck('傳奇英雄', heroState.value.identity === '傳奇')) return false;
+            if (heroCheck('國士英雄', heroState.value.identity === '國士')) return false;
+            if (heroCheck('名將英雄', heroState.value.identity === '名將')) return false;
+            if (heroCheck('良才英雄', heroState.value.identity === '良才')) return false;
+            if (heroCheck('巾幗英雄', heroState.value.identity === '巾幗')) return false;
+            if (heroCheck('女性', heroState.value.gender === '女性')) return false;
+            if (heroCheck('男性', heroState.value.gender === '男性')) return false;
+            if (heroCheck('騎兵', heroState.value.fullCategory.includes('騎兵'))) return false;
+            if (heroCheck('弓兵', heroState.value.fullCategory.includes('弓兵'))) return false;
+            if (heroCheck('步兵', heroState.value.fullCategory.includes('步兵'))) return false;
+            if (heroCheck('方士', heroState.value.fullCategory.includes('方士'))) return false;
+
+            const notClassMatch = segment.match(/(?:不為|非|不是)(武將|文官|全才)/);
+            if (notClassMatch && heroState.value.class === notClassMatch[1]) return false;
+            if (!notClassMatch && !/(對|對戰|受到|針對|面對|敵方|敵軍)(武將|文官|全才)/.test(segment)) {
+                const classesInSegment = [];
+                if (segment.includes('文官') && !/文官類英雄/.test(segment)) classesInSegment.push('文官');
+                if (segment.includes('全才') && !/全才類英雄/.test(segment)) classesInSegment.push('全才');
+                if (segment.includes('武將') && !/武將類英雄/.test(segment)) classesInSegment.push('武將');
+                if (classesInSegment.length > 0 && !classesInSegment.includes(heroState.value.class)) return false;
+            }
+            const nameMatch = segment.match(/(.+?)裝備時/);
+            if (nameMatch && !/文官|全才|武將|傳奇|國士|名將|良才|女性|男性|巾幗|主將|副將/.test(nameMatch[1]) && !nameMatch[1].includes('已輪迴') && !nameMatch[1].includes('已覺醒') && !heroState.value.selectedHeroName.includes(nameMatch[1])) return false;
+            if ((segment.includes('已覺醒') || segment.includes('覺醒英雄')) && !heroState.value.isAwakened) return false;
+            if ((segment.includes('已輪迴') || segment.includes('輪迴英雄')) && !heroState.value.isReincarnated) return false;
+
+            // 英雄等級與品質條件預設達成，放在最後作為保底
+            if (segment.includes('英雄等級達到') || segment.includes('品質達到金色')) return true;
+
+            return true;
+        };
+
+        /**
+         * --- 單詞解釋核心 (Word Interpretation Core) ---
+         * 負責將「整串效果文字」拆分為「單詞」，並對每個單詞進行分類與數值提取。
+         */
+        const interpretEffectSync = (eff, sourceItemName, equipConfig, context = {}, options = {}) => {
+            if (typeof eff !== 'string') return { words: [], totalStats: {}, hasLinkage: false };
+
+            // 快速掃描模式：利用單行正則掌控「連動」與「目標」判定
+            if (options.quickScan) {
+                const terms = new Set(['套', '同時裝備', '每裝備', '齊上陣']);
+                if (options.targetStats && options.targetStats.length > 0) {
+                    options.targetStats.forEach(s => {
+                        terms.add(s);
+                        // 支援縮寫與四維判定
+                        if (['武力', '智力', '統御', '魅力'].includes(s)) {
+                            terms.add(s.charAt(0));
+                            terms.add('四維');
+                        }
+                    });
+                }
+                if (!new RegExp(Array.from(terms).join('|')).test(eff)) {
+                    return { isIrrelevant: true, hasLinkage: false, totalStats: {} };
+                }
+            }
+
+            const results = {
+                words: [],
+                totalStats: {},
+                hasLinkage: false
+            };
+
+            const parts = eff.split(EFFECT_SPLIT_REGEX).filter(p => p !== undefined && p !== '');
+
+            parts.forEach(part => {
+                // 如果是標點符號或空格，直接視為啟動的純文字段
+                if (EFFECT_SPLIT_REGEX.test(part) || !part.trim()) {
+                    results.words.push({ text: part, stats: {}, isLinkage: false, isActive: true });
+                    return;
+                }
+
+                let processedPart = part;
+                const wordStats = {};
+                const isLinkage = /套|同時裝備|每裝備|齊上陣/.test(part);
+                if (isLinkage) results.hasLinkage = true;
+
+                // 1. 處理「分別獲得」邏輯
+                if (part.includes('分別') && part.includes('/')) {
+                    const classMatch = part.match(/(.+?)\s*裝備時/);
+                    if (classMatch) {
+                        const classList = classMatch[1].split('/');
+                        const idx = classList.indexOf(heroState.value.class);
+                        if (idx !== -1) {
+                            const effectMatch = part.match(/分別獲得\s*(.+)$/);
+                            if (effectMatch) {
+                                const effectList = effectMatch[1].split('/');
+                                if (effectList[idx]) processedPart = effectList[idx]; else return;
+                            }
+                        } else return;
+                    }
+                }
+
+                // 2. 條件判定
+                if (!checkSegmentSync(processedPart, sourceItemName, equipConfig)) {
+                    results.words.push({ text: part, stats: {}, isLinkage, isActive: false });
+                    return;
+                }
+                if (processedPart.includes('每點') || /每\d+點/.test(processedPart)) {
+                    results.words.push({ text: part, stats: {}, isLinkage: true, isActive: true });
+                    return;
+                }
+
+                // 3. 處理倍率 (每 N 件)
+                let multiplier = 1;
+                const cnToNum = (s) => { const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 }; return map[s] || parseInt(s) || 1; };
+                const stackMatch = processedPart.match(/每裝備\s*(\d+|一|二|三|四|五|六)\s*件\s*(.+?)套/);
+                const listStackMatch = processedPart.match(/在\s*(.+?)\s*中每裝備\s*(\d+|一|二|三|四|五|六)\s*件/);
+
+                if (stackMatch && context.setCounts) {
+                    const unit = cnToNum(stackMatch[1]);
+                    const cleanedStackSet = cleanName(stackMatch[2]);
+                    let currentCount = 0;
+                    Object.keys(context.setCounts).forEach(s => { if (cleanName(s).includes(cleanedStackSet) || cleanedStackSet.includes(cleanName(s))) currentCount = context.setCounts[s]; });
+                    multiplier = Math.floor(currentCount / unit);
+                } else if (listStackMatch && context.equippedNames) {
+                    const itemsInList = (listStackMatch[1].match(/【(.+?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
+                    let currentCount = 0;
+                    itemsInList.forEach(name => { if (context.equippedNames.has(name)) currentCount++; });
+                    multiplier = Math.floor(currentCount / cnToNum(listStackMatch[2]));
+                }
+
+                if (multiplier <= 0) {
+                    results.words.push({ text: part, stats: {}, isLinkage, isActive: false });
+                    return;
+                }
+
+                // 4. 數值提取
+                const masterRegex = /(主將|自身|全軍|後軍|前軍|近戰|步兵|騎兵|弓兵|方士|英雄|傳奇|國士|巾幗|名將|良才)?\s*(?:((?:武力|統御|智力|魅力|武|智|統|魅|四維|全四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害|暴擊傷害)(?:[\/\s、]*(?:武力|統御|智力|魅力|武|智|統|魅|四維|全四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害|暴擊傷害))*)\s*(額外)?\s*([+-]?\s*\d+)(點|%|)|([+-]?\s*\d+)(點|%|)\s*((?:武力|統御|智力|魅力|武|智|統|魅|四維|全四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害|暴擊傷害)(?:[\/\s、]*(?:武力|統御|智力|魅力|武|智|統|魅|四維|全四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害|暴擊傷害))*))/g;
+                const eachRegex = /([主將|自身|全軍|後軍|前軍|近戰|步兵|騎兵|弓兵|方士|英雄|傳奇|國士|巾幗|名將|良才\s]*)?([武力|智力|魅力|統御|四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|、\s]+)各\s*([+-]\s*\d+)(%?)/g;
+
+                // 4.1 各+N
+                let em;
+                while ((em = eachRegex.exec(processedPart)) !== null) {
+                    const prefix = (em[1] || '').trim().replace('英雄', '');
+                    if (prefix && !['主將', '自身', '全軍'].includes(prefix) && !(heroState.value.fullCategory || '').includes(prefix)) continue;
+                    let targets = em[2].split(/[、\s]+/).filter(Boolean);
+                    if (targets.includes('四維')) { targets = targets.filter(s => s !== '四維'); targets.push('武力', '智力', '統御', '魅力'); }
+                    const val = parseInt(em[3].replace(/\s+/g, '')) * multiplier;
+                    const unit = em[4] === '%' ? '%' : '';
+                    targets.forEach(s => { const key = s + unit; wordStats[key] = (wordStats[key] || 0) + val; });
+                }
+
+                // 4.2 常規
+                let m; masterRegex.lastIndex = 0;
+                while ((m = masterRegex.exec(processedPart)) !== null) {
+                    const prefix = (m[1] || '').replace('英雄', '');
+                    if (prefix && !['主將', '自身', '全軍'].includes(prefix) && !(heroState.value.fullCategory || '').includes(prefix)) continue;
+                    const statRaw = m[2] || m[8], rawVal = m[4] || m[6], unit = (m[5] || m[7]) === '%' ? '%' : '';
+                    if (statRaw && rawVal) {
+                        const val = parseInt(rawVal.replace(/\s+/g, '')) * multiplier;
+                        statRaw.split(/[/\s、]+/).forEach(sn => {
+                            let fn = sn.trim();
+                            if (fn === '四維' || fn === '全四維') {
+                                ['武力', '智力', '統御', '魅力'].forEach(s => { wordStats[s + unit] = (wordStats[s + unit] || 0) + val; });
+                            } else {
+                                const map = { '武': '武力', '智': '智力', '統': '統御', '魅': '魅力' };
+                                if (map[fn]) fn = map[fn];
+                                wordStats[fn + unit] = (wordStats[fn + unit] || 0) + val;
+                            }
+                        });
+                    }
+                }
+
+                results.words.push({ text: part, stats: wordStats, isLinkage, isActive: true });
+                Object.keys(wordStats).forEach(k => { results.totalStats[k] = (results.totalStats[k] || 0) + wordStats[k]; });
+            });
+
+            return results;
+        };
+
+
+
+        const getCombinedEffectsSync = (equipConfig) => {
+            const result = {
+                skills: {},
+                display: [] // 改為陣列結構
+            };
+
+            const hasLieutenant = !!(equipConfig.rear_hero || equipConfig.front_hero);
+
+            if (hasLieutenant) {
+                const mainHero = allHeroes.value.find(h => h.name === heroState.value.selectedHeroName);
+                if (mainHero) {
+                    const fateList = [];
+                    ['talents', 'fates', 'awakening', 'holy_awakening', 'reincarnation'].forEach(cat => {
+                        if (mainHero[cat]) mainHero[cat].forEach(skillText => {
+                            if (skillText.includes('同時上陣')) fateList.push(skillText);
+                        });
+                    });
+                    if (fateList.length > 0) {
+                        result.display.push({
+                            label: `🌟 ${mainHero.name}・技能宿命`,
+                            source: 'HERO_SKILL',
+                            effects: fateList
+                        });
+                    }
+                }
+            }
+
+            ['rear_hero', 'front_hero'].forEach(slotId => {
+                const lieutName = equipConfig[slotId];
+                if (lieutName) {
+                    const hero = allHeroes.value.find(h => h.name === lieutName.replace(/^(神·|聖·)/, ''));
+                    if (hero) {
+                        const skills = [];
+                        let cats = ['talents'];
+                        if (lieutName.startsWith('聖·')) cats.push('holy_awakening'); else if (lieutName.startsWith('神·')) cats.push('awakening');
+                        cats.forEach(cat => {
+                            if (hero[cat]) hero[cat].forEach(skill => {
+                                if (skill.includes('作為主將') && !skill.includes('或副將')) return;
+                                if (/(作為|擔任|擔當|身為).*?副將|副將品質加成|品質加成\(副將\)|\(副將\)|主將(武力|智力|統御|魅力|屬性|攻擊|防禦|兵力|速度|基礎)/.test(skill)) {
+                                    skills.push(skill);
+                                }
+                            });
+                        });
+                        if (skills.length > 0) {
+                            const posLabel = slotId === 'front_hero' ? '前軍' : '後軍';
+                            result.display.push({
+                                label: `🎖️ ${posLabel}副將・${lieutName}`,
+                                source: slotId,
+                                effects: skills
+                            });
+                            result.skills[slotId] = skills.map(s => ({ text: s }));
+                        }
+                    }
+                }
+            });
+
+            getEquippedItemsSync(equipConfig).forEach((item, index) => {
+                if (item.category === '套裝' || item.category === '副將') return;
+
+                let displayName = item.name || item.parentName || "未知裝備";
+                if (item.isPartial) {
+                    displayName = `${displayName}`;
+                    let counter = 1;
+                    const baseName = displayName;
+                    // 檢查陣列中是否已有同名 label
+                    while (result.display.some(d => d.label === displayName)) {
+                        displayName = `${baseName} ${counter}`;
+                        counter++;
+                    }
+                }
+
+                result.display.push({
+                    label: displayName,
+                    source: item.name || item.parentName,
+                    effects: (item.effects || [])
+                });
+            });
+            return result;
+        };
+        const calculateTotalStats = (equipConfig = selectedEquip.value) => {
+            const totals = {};
+            const context = { setCounts: {}, equippedNames: new Set() };
+            const equippedItems = getEquippedItemsSync(equipConfig);
+            equippedItems.forEach(item => {
+                if (item.name) context.equippedNames.add(item.name);
+                if (item.sets) item.sets.split(' ').forEach(s => { if (s.trim()) context.setCounts[s.trim()] = (context.setCounts[s.trim()] || 0) + 1; });
+            });
+            if (equipConfig.rear_hero) context.equippedNames.add(equipConfig.rear_hero);
+            if (equipConfig.front_hero) context.equippedNames.add(equipConfig.front_hero);
+
+            // 1. total_equip(): 裝備統計
+            const calculateEquipStats = () => {
+                const equipItems = equippedItems.filter(i => i.category !== '副將');
+                const hasYulinLing = equipConfig.token && (equipConfig.token.name === '羽林令' || equipConfig.token === '羽林令');
+                const yulinMultipliers = hasYulinLing ? [2, 2, 2, 1, 1] : [1, 1, 1, 1, 1];
+
+                equipItems.forEach(item => {
+                    const isYulinSet = item.sets && item.sets.includes('羽林套裝');
+                    (item.effects || []).forEach((eff, effIdx) => {
+                        const m = isYulinSet ? (yulinMultipliers[effIdx] || 1) : 1;
+                        const { words } = interpretEffectSync(eff, item.name, equipConfig, context);
+                        words.forEach(word => {
+                            if (word.isActive) Object.keys(word.stats).forEach(k => { totals[k] = (totals[k] || 0) + word.stats[k] * m; });
+                        });
+                    });
+                });
+            };
+
+            // 2. total_副將(): 副將與主將技能統計
+            const calculateLieutenantStats = () => {
+                const combined = getCombinedEffectsSync(equipConfig);
+                // 副將技能
+                Object.entries(combined.skills || {}).forEach(([slotId, skills]) => {
+                    skills.forEach(skillObj => {
+                        const { totalStats } = interpretEffectSync(skillObj.text, slotId, equipConfig);
+                        Object.keys(totalStats).forEach(k => { totals[k] = (totals[k] || 0) + totalStats[k]; });
+                    });
+                });
+                // 主將技能/宿命
+                (combined.display || []).forEach(item => {
+                    if (item.source === 'HERO_SKILL') {
+                        item.effects.forEach(effText => {
+                            const { totalStats } = interpretEffectSync(effText, 'HERO_SKILL', equipConfig, context);
+                            Object.keys(totalStats).forEach(k => { totals[k] = (totals[k] || 0) + totalStats[k]; });
+                        });
+                    }
+                });
+            };
+
+            calculateEquipStats();
+            calculateLieutenantStats();
+
+
+            // 恢復：僅回傳四維屬性，避免結構複雜化
+            const res = {};
+            ['武力', '智力', '魅力', '統御'].forEach(k => {
+                res[k] = totals[k] || 0;
+            });
+            return res;
+        };
+
 
         // --- 狀態定義 ---
         const activeSlot = ref(null);
         const slotSearchQuery = ref('');
+        const sortStats = ref([]); // ['武力', '智力', '魅力', '統御']
         const selectedEquip = ref({
             'weapon': null,
             'mount': null,
@@ -58,7 +497,7 @@ const SimulatorComponent = {
             } else {
                 heroState.value.selectedHeroName = name;
                 updateHeroAttributes(name);
-                
+
                 // 檢查副將是否仍然合格
                 ['rear_hero', 'front_hero'].forEach(slot => {
                     const lieutName = selectedEquip.value[slot];
@@ -75,7 +514,7 @@ const SimulatorComponent = {
                         }
                     }
                 });
-                
+
                 showHeroSearch.value = false;
                 heroSearchQuery.value = '';
             }
@@ -104,9 +543,6 @@ const SimulatorComponent = {
             heroState.value.gender = hero.gender || '男性';
         };
 
-        const syncGender = () => {
-            // 已由 updateHeroAttributes 從資料庫同步，不再強制覆蓋
-        };
 
         // 當主將變更時，自動檢查並清空不符合條件的副將
         watch(() => heroState.value.selectedHeroName, (newHeroName) => {
@@ -151,7 +587,7 @@ const SimulatorComponent = {
                 const isFate = fateHeroNames.has(baseName);
                 const heroCat = lHero.category || '';
                 const matchesAnyFate = Array.from(fateCategories).some(cat => heroCat.includes(cat));
-                
+
                 // 檢查軍種/全能資質
                 const isValidType = isHeroValidForLieutenant(lHero, slot);
 
@@ -214,13 +650,13 @@ const SimulatorComponent = {
         const filteredHeroes = computed(() => {
             let list = allHeroes.value;
             const kw = heroSearchQuery.value.trim().toLowerCase();
-            
+
             if (activeHeroSlot.value === 'rear_hero' || activeHeroSlot.value === 'front_hero') {
                 // 提取目前主將的所有宿命英雄姓名與類別
                 const mainHero = allHeroes.value.find(mh => mh.name === heroState.value.selectedHeroName);
                 const fateHeroNames = new Set();
                 const fateCategories = new Set();
-                
+
                 if (mainHero) {
                     ['talents', 'fates', 'awakening', 'holy_awakening', 'reincarnation'].forEach(cat => {
                         if (mainHero[cat]) {
@@ -291,12 +727,30 @@ const SimulatorComponent = {
                 list = finalHeroList;
             }
 
-            if (!kw) return list;
+            if (kw) {
+                list = list.filter(h => {
+                    const haystack = (h.name + ' ' + (h.category || '')).toLowerCase();
+                    return haystack.includes(kw);
+                });
+            }
 
-            return list.filter(h => {
-                const haystack = (h.name + ' ' + (h.category || '')).toLowerCase();
-                return haystack.includes(kw);
-            });
+            // 副將排序：模擬裝備每位副將後的四維差值
+            if (sortStats.value.length > 0 && (activeHeroSlot.value === 'rear_hero' || activeHeroSlot.value === 'front_hero')) {
+                const currentTotals = calculateTotalStats();
+                list.forEach(h => {
+                    const tempEquip = { ...selectedEquip.value };
+                    tempEquip[activeHeroSlot.value] = h.name;
+                    const potentialTotals = calculateTotalStats(tempEquip);
+                    let bonus = 0;
+                    sortStats.value.forEach(s => bonus += (potentialTotals[s] || 0) - (currentTotals[s] || 0));
+                    h._sortBonus = bonus;
+                });
+                list.sort((a, b) => b._sortBonus - a._sortBonus);
+            } else {
+                list.forEach(h => h._sortBonus = 0);
+            }
+
+            return list;
         });
 
         // --- 輔助函數 ---
@@ -305,7 +759,6 @@ const SimulatorComponent = {
             return name.replace(/(金色|紫色|品質|套裝|套)/g, '').trim();
         };
 
-        // --- 核心邏輯 ---
         const filteredSlotItems = (slot) => {
             const categoryName = slot.category || slot.name;
             let list = allItems.value;
@@ -315,12 +768,10 @@ const SimulatorComponent = {
                 list = list.filter(item => item.category === categoryName);
             }
 
-            // 神靈插槽限定：僅能選擇具備 5 個詞條的裝備
             if (slot.id && slot.id.endsWith('_p')) {
                 list = list.filter(item => item.effects && item.effects.length === 5);
             }
 
-            // 裝備唯一性檢查：排除已經在其他插槽選中的裝備
             const equippedNames = new Set();
             Object.entries(selectedEquip.value).forEach(([id, val]) => {
                 if (!val || id === slot.id) return;
@@ -336,8 +787,109 @@ const SimulatorComponent = {
                 const kw = slotSearchQuery.value.toLowerCase();
                 list = list.filter(item => item.name.toLowerCase().includes(kw));
             }
-            return list;
+
+            // --- 執行排序與裝飾 ---
+            const currentTotals = calculateTotalStats();
+            const isDeitySlot = slot.id && slot.id.endsWith('_p');
+            const tempEquip = { ...selectedEquip.value };
+
+            // 建立裝飾後的清單，不修改原始 allItems
+            let resultList = list.map(item => {
+                const decorated = Object.create(item); // 使用原型繼承，避免觸發響應式
+                let maxItemBonus = 0;
+                let bestIdx = 0;
+
+                if (sortStats.value.length > 0) {
+                    if (isDeitySlot) {
+                        // 1. 基準計算
+                        tempEquip[slot.id] = { item, effectIdx: -1 };
+                        const basePot = calculateTotalStats(tempEquip);
+                        const baseStats = {};
+                        sortStats.value.forEach(s => baseStats[s] = (basePot[s] || 0) - (currentTotals[s] || 0));
+
+                        // 2. 啟發式掃描 TODO
+                        const targetIndices = [];
+                        const linkageIndices = [];
+                        const allEffects = (item.effects || []);
+                        const effectAnalyses = [];
+
+                        allEffects.forEach((eff, idx) => {
+                            const result = interpretEffectSync(eff, item.name, tempEquip, {}, {
+                                quickScan: true,
+                                targetStats: sortStats.value
+                            });
+                            effectAnalyses[idx] = result;
+                            if (!result.isIrrelevant) {
+                                if (sortStats.value.some(s => result.totalStats[s] !== undefined)) targetIndices.push(idx);
+                                if (result.hasLinkage || !!item.sets) linkageIndices.push(idx);
+                            } else if (item.sets) {
+                                linkageIndices.push(idx);
+                            }
+                        });
+
+                        // 3. 決定路徑
+                        const toProcess = new Map();
+                        if (targetIndices.length === 0) {
+                            toProcess.set(0, 'slow');
+                        } else {
+                            targetIndices.forEach(idx => toProcess.set(idx, linkageIndices.includes(idx) ? 'slow' : 'fast'));
+                            linkageIndices.forEach(idx => toProcess.set(idx, 'slow'));
+                            if (toProcess.size < 5) {
+                                for (let i = 0; i < allEffects.length; i++) {
+                                    if (!toProcess.has(i)) { toProcess.set(i, 'slow'); break; }
+                                }
+                            }
+                        }
+
+                        // 4. 計算分數
+                        maxItemBonus = -Infinity;
+                        toProcess.forEach((type, idx) => {
+                            let currentEffectBonus = 0;
+                            if (type === 'slow') {
+                                tempEquip[slot.id] = { item, effectIdx: idx };
+                                const pot = calculateTotalStats(tempEquip);
+                                sortStats.value.forEach(s => currentEffectBonus += (pot[s] || 0) - (currentTotals[s] || 0));
+                            } else {
+                                const { totalStats } = effectAnalyses[idx];
+                                sortStats.value.forEach(s => currentEffectBonus += baseStats[s] + (totalStats[s] || 0));
+                            }
+                            if (currentEffectBonus > maxItemBonus) {
+                                maxItemBonus = currentEffectBonus;
+                                bestIdx = idx;
+                            }
+                        });
+                    } else {
+                        // 普通位
+                        tempEquip[slot.id] = item;
+                        const pot = calculateTotalStats(tempEquip);
+                        sortStats.value.forEach(s => maxItemBonus += (pot[s] || 0) - (currentTotals[s] || 0));
+                    }
+                }
+
+                decorated._sortBonus = maxItemBonus === -Infinity ? 0 : maxItemBonus;
+                decorated._bestEffectIdx = bestIdx;
+                return decorated;
+            });
+
+            if (sortStats.value.length > 0) {
+                resultList.sort((a, b) => (b._sortBonus || 0) - (a._sortBonus || 0));
+            }
+
+            return resultList;
         };
+
+        const sortMetadata = new Map();
+
+        const activeSlotItems = computed(() => {
+            if (!activeSlot.value) return [];
+            const slot = typeof activeSlot.value === 'string'
+                ? [...simulatorSlots, ...soulJadeSlots, ...partialSlots].find(s => s.id === activeSlot.value)
+                : activeSlot.value;
+
+            // 每次計算前清空臨時數據
+            sortMetadata.clear();
+            return filteredSlotItems(slot, sortMetadata);
+        });
 
         const isSummaryOpen = ref(false);
         const popoverView = ref('items'); // 'items' or 'effects'
@@ -348,6 +900,7 @@ const SimulatorComponent = {
             if (newVal) {
                 popoverView.value = 'items';
                 pendingItem.value = null;
+                sortStats.value = []; // 切換插槽時重置排序
             }
         });
 
@@ -434,12 +987,30 @@ const SimulatorComponent = {
         };
 
 
-        const selectItemForSlot = (slotId, item) => {
+        const selectItemForSlot = (slotId, item, effectIdx = -1) => {
             if (slotId.endsWith('_p')) {
-                // 神靈插槽：進入第二層選擇詞條
-                pendingItem.value = item;
-                popoverView.value = 'effects';
+                // 如果已經指定了詞條索引 (來自自動優化或二階選單)
+                if (effectIdx !== -1) {
+                    selectedEquip.value[slotId] = { item, effectIdx };
+                    activeSlot.value = null;
+                    slotSearchQuery.value = '';
+                    popoverView.value = 'items';
+                    pendingItem.value = null;
+                    return;
+                }
+
+                // 自動優化邏輯
+                if (sortStats.value.length > 0 && typeof item._bestEffectIdx === 'number') {
+                    selectedEquip.value[slotId] = { item, effectIdx: item._bestEffectIdx };
+                    activeSlot.value = null;
+                    slotSearchQuery.value = '';
+                } else {
+                    // 進入二階選單
+                    pendingItem.value = item;
+                    popoverView.value = 'effects';
+                }
             } else {
+                // 一般插槽
                 selectedEquip.value[slotId] = item;
                 activeSlot.value = null;
                 slotSearchQuery.value = '';
@@ -452,20 +1023,6 @@ const SimulatorComponent = {
             pendingItem.value = null;
         };
 
-        const selectPartialEffect = (slotId, idx) => {
-            if (pendingItem.value && slotId.endsWith('_p')) {
-                selectedEquip.value[slotId] = {
-                    item: pendingItem.value,
-                    effectIdx: idx
-                };
-                // 完成選定
-                activeSlot.value = null;
-                slotSearchQuery.value = '';
-                popoverView.value = 'items';
-                pendingItem.value = null;
-                if (typeof hideItemPreview === 'function') hideItemPreview(true);
-            }
-        };
 
         const handleSearchBlur = () => {
             // 移除自動關閉，改由 window mousedown 處理點擊外部關閉
@@ -479,568 +1036,17 @@ const SimulatorComponent = {
         const hasSelectedItems = computed(() => {
             return Object.values(selectedEquip.value).some(v => v !== null);
         });
+        const combinedEffects = computed(() => getCombinedEffectsSync(selectedEquip.value).display);
 
-        const getEquippedItems = () => {
-            const items = [];
-            Object.entries(selectedEquip.value).forEach(([key, val]) => {
-                if (!val) return;
-                if (key.endsWith('_p')) {
-                    if (val.item && val.effectIdx >= 0) {
-                        items.push({
-                            ...val.item,
-                            effects: [val.item.effects[val.effectIdx]],
-                            isPartial: true,
-                            parentName: val.item.name
-                        });
-                    }
-                } else if (key === 'rear_hero' || key === 'front_hero') {
-                    // 副將作為虛擬物品加入，用於觸發宿命
-                    items.push({ name: val, category: '副將' });
-                } else {
-                    items.push(val);
-                }
-            });
-            return items;
-        };
-
-        const combinedEffects = computed(() => {
-            const result = {};
-            
-            // 1. 英雄天賦/宿命 (同時上陣)
-            const mainHero = allHeroes.value.find(h => h.name === heroState.value.selectedHeroName);
-            if (mainHero) {
-                const skillCategories = ['talents', 'fates', 'awakening', 'holy_awakening', 'reincarnation'];
-                const fateList = [];
-                
-                skillCategories.forEach(cat => {
-                    if (mainHero[cat] && Array.isArray(mainHero[cat])) {
-                        mainHero[cat].forEach(skillText => {
-                            if (skillText.includes('同時上陣')) {
-                                fateList.push({
-                                    text: skillText,
-                                    isActive: checkSegment(skillText, 'HERO_SKILL')
-                                });
-                            }
-                        });
-                    }
-                });
-                
-                if (fateList.length > 0) {
-                    result[`🌟 ${mainHero.name}・技能宿命`] = fateList;
-                }
-            }
-
-            // 2. 副將自身特技 (包含「副將」關鍵字)
-            ['rear_hero', 'front_hero'].forEach(slot => {
-                const lieutName = selectedEquip.value[slot];
-                if (lieutName) {
-                    const isSaint = lieutName.startsWith('聖·');
-                    const isDivine = lieutName.startsWith('神·');
-                    const baseName = lieutName.replace(/^(神·|聖·)/, '');
-                    const hero = allHeroes.value.find(h => h.name === baseName);
-                    
-                    if (hero) {
-                        const lieutSkills = [];
-                        // 根據版本決定掃描範圍
-                        let categoriesToScan = ['talents'];
-                        if (isSaint) categoriesToScan = ['talents', 'holy_awakening'];
-                        else if (isDivine) categoriesToScan = ['talents', 'awakening'];
-                        
-                        categoriesToScan.forEach(cat => {
-                            if (hero[cat] && Array.isArray(hero[cat])) {
-                                hero[cat].forEach(skillText => {
-                                    // 排除僅限「作為主將時」的技能，但保留「作為主將或副將時」的技能
-                                    if (skillText.includes('作為主將') && !skillText.includes('或副將')) return;
-
-                                    const lieutRegex = /(作為|擔任|擔當|身為).*?副將|副將品質加成|品質加成\(副將\)|可擔當.+?副將|\(副將\)|主將(武力|智力|統御|魅力|屬性|攻擊|防禦|兵力|速度|基礎)/;
-                                    if (lieutRegex.test(skillText)) {
-                                        lieutSkills.push({
-                                            text: skillText,
-                                            isActive: checkSegment(skillText, slot)
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                        
-                        if (lieutSkills.length > 0) {
-                            result[`🎖️ ${lieutName}・副將特技`] = lieutSkills;
-                        }
-                    }
-                }
-            });
-
-            // 3. 裝備效果
-            Object.entries(selectedEquip.value).forEach(([key, val]) => {
-                if (!val) return;
-                if (key === 'rear_hero' || key === 'front_hero') return; // 副將不顯示在效果清單中，僅顯示其觸發的效果
-
-                if (key.endsWith('_p')) {
-                    if (val && val.item) {
-                        const effText = val.effectIdx >= 0
-                            ? val.item.effects[val.effectIdx]
-                            : '（未選定詞條）';
-                        result[val.item.name] = [effText];
-                    }
-                } else {
-                    if (val.effects && val.effects.length) {
-                        result[val.name] = val.effects;
-                    }
-                }
-            });
-            return result;
-        });
-
-        const checkSegment = (segment, sourceItemName = null) => {
-            if (!segment || typeof segment !== 'string') return true;
-
-            const equippedItems = getEquippedItems();
-            // 件數與品質判定：神靈插槽也會被計入
-            let mainEquippedItems = [...equippedItems];
-
-            // 【特殊規則】：作為「第 6 件」的裝備（通常是魂玉或特殊位），其「裝備5件金色品質」判定不包含自己
-            // 這樣穿滿 6 件時（自己+其他5件），扣除自己後剛好滿足「5件」的完全體判定
-            if (segment.includes('裝備5件金色品質') && sourceItemName) {
-                mainEquippedItems = mainEquippedItems.filter(item => item.name !== sourceItemName);
-            }
-
-            const totalEquipped = mainEquippedItems.length;
-            const goldCount = mainEquippedItems.filter(item => item.name && !item.name.includes('紫色')).length;
-            const equippedNames = new Set(equippedItems.map(i => i.name));
-            
-            // 加入副將姓名到判定集合中
-            if (selectedEquip.value.rear_hero) equippedNames.add(selectedEquip.value.rear_hero);
-            if (selectedEquip.value.front_hero) equippedNames.add(selectedEquip.value.front_hero);
-
-            const setCounts = {};
-            mainEquippedItems.forEach(item => {
-                if (item.sets) {
-                    item.sets.split(' ').forEach(s => { if (s.trim()) setCounts[s.trim()] = (setCounts[s.trim()] || 0) + 1; });
-                }
-            });
-
-            // 件數觸發檢查 (支援「裝備5件XXX套」、「裝備5件金色品質」或「裝備5件金色品質祖龍套」)
-            const countMatch = segment.match(/裝備\s*(\d+)\s*件(金色品質)?\s*(.+?)(?:套|時|$)/);
-            if (countMatch) {
-                const required = parseInt(countMatch[1]);
-                const isGoldReq = !!countMatch[2];
-                const rawSetName = countMatch[3].trim();
-                const cleanedRequiredSet = cleanName(rawSetName);
-
-                let currentCount = 0;
-                // 如果指定了套裝名稱（例如：祖龍）
-                if (cleanedRequiredSet && cleanedRequiredSet !== '金色' && cleanedRequiredSet !== '品質') {
-                    Object.keys(setCounts).forEach(s => {
-                        if (cleanName(s).includes(cleanedRequiredSet) || cleanedRequiredSet.includes(cleanName(s))) {
-                            currentCount = setCounts[s];
-                        }
-                    });
-                } else if (isGoldReq) {
-                    // 如果只說「5件金色品質」，則統計所有金色裝備
-                    currentCount = goldCount;
-                }
-
-                if (required === 5) {
-                    // 傳統 5 件套判定 (包含 4+1 特效)
-                    if (currentCount >= 4 && totalEquipped === 5 && !isGoldReq) return true;
-                    // 金色品質 5 件判定
-                    if (currentCount >= 5) return true;
-                }
-
-                if (required === 6) {
-                    // 6 件套判定
-                    if (currentCount >= 6) return true;
-                }
-
-                if (currentCount < required) return false;
-            }
-
-            // 特定裝備或英雄配對檢查 (支援「同時裝備」、「必須含有」、「同時上陣」等敘述)
-            if (segment.includes('同時上陣') || segment.includes('同時裝備') || segment.includes('必須含有')) {
-                // 1. 優先從括號中提取姓名，例如：兄弟情深(夏侯淵)
-                const bracketMatch = segment.match(/\(([^)]+)\)/);
-                // 2. 或者從關鍵字後面提取，例如：同時上陣馬超
-                const pairMatch = segment.match(/(?:同時裝備|必須含有|同時上陣)\s*(?:【)?([^，；。）】\s]+)(?:】)?/);
-                
-                const targets = [];
-                if (bracketMatch) targets.push(bracketMatch[1].trim());
-                if (pairMatch) targets.push(pairMatch[1].trim());
-
-                if (targets.length > 0) {
-                    // 只要有一個目標在場即可 (通常只有一個)
-                    const isMet = targets.some(name => {
-                        if (name.includes('件')) return true; // 跳過件數判定
-                        return equippedNames.has(name);
-                    });
-                    if (!isMet) return false;
-                }
-            }
-
-            // 副將位置與兵種判定 (例如：作為前軍副將時、作為方士副將時)
-            if (segment.includes('前軍副將') && sourceItemName === 'rear_hero') return false;
-            if (segment.includes('後軍副將') && sourceItemName === 'front_hero') return false;
-            
-            const lieutTypeMatch = segment.match(/作為(步兵|騎兵|弓兵|方士)副將時/);
-            if (lieutTypeMatch && (sourceItemName === 'front_hero' || sourceItemName === 'rear_hero')) {
-                const requiredType = lieutTypeMatch[1];
-                const reqs = lieutenantRequirements.value;
-                const slotTypes = sourceItemName === 'front_hero' ? reqs.front : reqs.rear;
-                if (!slotTypes.includes(requiredType)) return false;
-            }
-
-            // 副將性別判定 (例如：作為男性副將時、作為男性英雄的副將時，均意指主將為男性)
-            if (/作為男性(英雄的)?副將時/.test(segment) && heroState.value.gender !== '男性') return false;
-            if (/作為女性(英雄的)?副將時/.test(segment) && heroState.value.gender !== '女性') return false;
-
-            // 英雄屬性條件檢查 (排除針對敵方或戰鬥情境的條件)
-            const heroCheck = (kw, cond) => {
-                if (!segment.includes(kw)) return false;
-
-                // 精確判定：這是一個身分要求（如：男性裝備時、攜帶弓兵）還是戰鬥情境
-                // 如果關鍵字後面跟著「裝備時」，或者我方「攜帶/帶領」，則視為身分要求
-                // 注意：排除「敵方攜帶」、「敵方未攜帶」等針對對手的判定，以及「我方」整體判定
-                const isHeroRequirement = (new RegExp(`${kw}.*裝備時`).test(segment) || 
-                                          segment.includes('攜帶' + kw) || 
-                                          segment.includes('帶領' + kw)) && 
-                                          !segment.includes('敵方') && 
-                                          !segment.includes('敵軍') &&
-                                          !segment.includes('我方');
-                
-                // 針對「性別」與「身分」類關鍵字，縮小戰鬥情境的判定範圍
-                const isIdentityKw = /男性|女性|傳奇|國士|巾幗|名將|良才/.test(kw);
-                let isBattleOrStat = false;
-
-                if (isIdentityKw) {
-                    // 身分類關鍵字：
-                    // 1. 如果是針對對手的判定（受到、對、針對...），一律視為戰鬥情境，不觸發自身身分檢查
-                    isBattleOrStat = new RegExp(`(?:對|針對|對戰|對陣|面對|敵方|敵軍|受到)${kw}`).test(segment);
-                } else {
-                    // 兵種或其他關鍵字：維持較廣的判定（包含「受到」或「關鍵字+屬性」）
-                    isBattleOrStat = !isHeroRequirement && (
-                        new RegExp(`(?:對|受到|針對|對戰|對陣|面對|敵方|敵軍)${kw}|${kw}.*(?:傷害|免傷|攻擊|防禦|兵力|速度|武力|智力|魅力|統御|格擋|保全|士兵|標記|抗性|狀態|幾率|機率)`).test(segment) ||
-                        segment.includes('敵方') || segment.includes('敵軍')
-                    );
-                }
-
-                if (isHeroRequirement) {
-                    // 如果明確是身分要求（裝備時），則忽略所有戰鬥情境判定，強制進行身分檢查
-                    return !cond;
-                }
-
-                if (isBattleOrStat) return false;
-
-                // 處理「非XXX」的情況 (例如：非女性英雄)
-                if (segment.includes('非' + kw) || segment.includes('不為' + kw)) {
-                    return cond; 
-                }
-
-                // 兵力、血量等戰鬥狀態或特殊職位條件預設達成
-                // 處理副將身份要求
-                if (segment.includes('副將')) {
-                    if (heroState.value.isLieutenant) return true;
-                    return false;
-                }
-                
-                // 兵力、血量等戰鬥狀態或特殊職位條件預設達成
-                if (/兵力|血量|不足|低於|少於|超過|高於|主將/.test(segment)) return false;
-
-                // 如果是身分要求但條件不符，回傳 true 讓外層返回 false
-                return !cond;
-            };
-
-            if (heroCheck('傳奇英雄', heroState.value.identity === '傳奇')) return false;
-            if (heroCheck('國士英雄', heroState.value.identity === '國士')) return false;
-            if (heroCheck('女性', heroState.value.gender === '女性')) return false;
-            if (heroCheck('男性', heroState.value.gender === '男性')) return false;
-            if (heroCheck('巾幗', heroState.value.gender === '女性')) return false;
-            if (heroCheck('騎兵', heroState.value.fullCategory.includes('騎兵'))) return false;
-            if (heroCheck('弓兵', heroState.value.fullCategory.includes('弓兵'))) return false;
-            if (heroCheck('步兵', heroState.value.fullCategory.includes('步兵'))) return false;
-            if (heroCheck('方士', heroState.value.fullCategory.includes('方士'))) return false;
-            // 職業條件檢查 (支援「文官或全才」、「武將/全才」等組合)
-            // 優先處理「不為/非」的否定判定
-            const notClassMatch = segment.match(/(?:不為|非|不是)(武將|文官|全才)/);
-            if (notClassMatch) {
-                if (heroState.value.class === notClassMatch[1]) return false;
-            } else {
-                // 如果片段中包含「對...」、「對戰...」、「敵方...」(且非針對自身)，視為戰鬥條件，預設生效
-                const isBattleCondition = /(對|對戰|受到|針對|面對|敵方|敵軍)(武將|文官|全才)/.test(segment);
-                
-                if (!isBattleCondition) {
-                    const classesInSegment = [];
-                    if (segment.includes('文官') && !/文官類英雄/.test(segment)) classesInSegment.push('文官');
-                    if (segment.includes('全才') && !/全才類英雄/.test(segment)) classesInSegment.push('全才');
-                    if (segment.includes('武將') && !/武將類英雄/.test(segment)) classesInSegment.push('武將');
-                    
-                    if (classesInSegment.length > 0) {
-                        // 如果字串中提到了職業要求，目前武將必須屬於其中之一
-                        if (!classesInSegment.includes(heroState.value.class)) return false;
-                    }
-                }
-            }
-
-            // 特定英雄名稱檢查
-            const nameMatch = segment.match(/(.+?)裝備時/);
-            if (nameMatch) {
-                const requiredHero = nameMatch[1].trim();
-                // 排除職業關鍵字、性別、覺醒、輪迴、職位等狀態詞，避免誤判為英雄姓名
-                const isClassKeyword = /文官|全才|武將|男性|女性|巾幗|主將|副將/.test(requiredHero);
-                if (!isClassKeyword && !requiredHero.includes('已輪迴') && !requiredHero.includes('已覺醒')) {
-                    if (!requiredHero.includes(heroState.value.selectedHeroName)) return false;
-                }
-            }
-
-            // 覺醒/輪迴檢查
-            if (segment.includes('已覺醒') || segment.includes('覺醒英雄')) {
-                if (!heroState.value.isAwakened) return false;
-            }
-            if (segment.includes('已輪迴') || segment.includes('輪迴英雄')) {
-                if (!heroState.value.isReincarnated) return false;
-            }
-
-            // 英雄等級與品質條件預設達成 (假設玩家英雄已滿配)
-            if (segment.includes('英雄等級達到') || segment.includes('品質達到金色')) {
-                return true;
-            }
-
-            return true;
-        };
-
-        const isEffectActive = (eff, sourceItemName = null) => {
-            if (eff && typeof eff === 'object' && eff.text) return eff.isActive;
-            if (typeof eff !== 'string') return true;
-            // 智能分割：先確保後面整段不含戰鬥關鍵字（受到/對/敵方），才允許在逗號處切分身分要求
-            const segments = eff.split(/；|;|(?:，|,)(?![^；;]*(?:受到|對|敵方|敵軍))(?=[^；;]*(?:裝備時|每裝備|品質達到|身份|等級|武將|文官|全才|男性|女性))/);
-            return segments.some(seg => checkSegment(seg, sourceItemName));
-        };
 
         const statAggregation = computed(() => {
-            const totals = {};
-            // 終極正則：支援各種排列組合與符號，並容忍空格，支援屬性合併顯示 (如：智/統+1)
-            const regex = /(前軍|後軍|全軍|步兵|騎兵|弓兵|方士)?\s*(?:((?:武力|統御|智力|魅力|武|智|統|魅|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害)(?:[/\s、]*(?:武力|統御|智力|魅力|武|智|統|魅|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害))*)\s*(額外)?\s*([+-]?\s*\d+)(點|%|)|([+-]?\s*\d+)(點|%|)\s*((?:武力|統御|智力|魅力|武|智|統|魅|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害)(?:[/\s、]*(?:武力|統御|智力|魅力|武|智|統|魅|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|傷害強度|傷害減免|格擋率|暴擊率|暴擊傷害|格擋傷害))*))/g;
-
-            const equippedItems = getEquippedItems();
-
-            const totalEquipped = equippedItems.length;
-            const goldCount = equippedItems.filter(item => item.name && !item.name.includes('紫色')).length;
-            const equippedNames = new Set(equippedItems.map(i => i.name));
-            const setCounts = {};
-            equippedItems.forEach(item => {
-                if (item.sets) {
-                    item.sets.split(' ').forEach(s => { if (s.trim()) setCounts[s.trim()] = (setCounts[s.trim()] || 0) + 1; });
-                }
-            });
-
-            const processedSetEffects = new Set();
-
-            const setMultipliers = {};
-            equippedItems.forEach(item => {
-                if (!item.effects) return;
-                item.effects.forEach((eff) => {
-                    if (typeof eff !== 'string' || !checkSegment(eff, item.name)) return;
-                    const m = eff.match(/使其他(.+?)套的(白色|綠色|藍色)屬性加成翻倍/);
-                    if (m) {
-                        const setName = cleanName(m[1]);
-                        const color = m[2];
-                        if (!setMultipliers[setName]) setMultipliers[setName] = [1, 1, 1, 1, 1];
-                        const targetIdx = color === '白色' ? 0 : (color === '綠色' ? 1 : 2);
-                        setMultipliers[setName][targetIdx] = 2;
-                    }
-                });
-            });
-
-            equippedItems.forEach(item => {
-                if (item.effects) {
-                    const itemSetName = cleanName(item.sets || '');
-                    item.effects.forEach((eff, effIdx) => {
-                        if (typeof eff !== 'string') return;
-
-                        let currentSetMultiplier = 1;
-                        Object.keys(setMultipliers).forEach(sName => {
-                            if (itemSetName.includes(sName)) {
-                                currentSetMultiplier = setMultipliers[sName][effIdx] || 1;
-                            }
-                        });
-
-                        const parts = eff.split(/；|;|(?:，|,)(?![^；;]*(?:受到|對|敵方|敵軍|分別獲得))(?=[^；;]*(?:裝備時|每裝備|品質達到|身份|等級|武將|文官|全才|男性|女性|分別獲得))/).filter(p => p.trim());
-
-                        parts.forEach(part => {
-                            // 處理「分別獲得」邏輯 (例如：武將/文官/全才裝備時，分別獲得武力+3/智力+3/統御+3)
-                            if (part.includes('分別') && part.includes('/')) {
-                                const classMatch = part.match(/(.+?)\s*裝備時/);
-                                if (classMatch) {
-                                    const classList = classMatch[1].split('/');
-                                    const idx = classList.indexOf(heroState.value.class);
-                                    if (idx !== -1) {
-                                        // 找到對應職業的屬性
-                                        const effectMatch = part.match(/分別獲得\s*(.+)$/);
-                                        if (effectMatch) {
-                                            const effectList = effectMatch[1].split('/');
-                                            if (effectList[idx]) part = effectList[idx];
-                                            else return; 
-                                        }
-                                    } else {
-                                        return; // 職業不匹配
-                                    }
-                                }
-                            }
-
-                            if (!checkSegment(part, item.name)) return;
-
-                            // 排除動態屬性加成 (例如：每點武力... 每20點智力...)，避免誤計入四維
-                            if (part.includes('每點') || /每\d+點/.test(part)) return;
-
-                            const cnToNum = (s) => {
-                                const map = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6 };
-                                return map[s] || parseInt(s) || 1;
-                            };
-
-                            const stackMatch = part.match(/每裝備\s*(\d+|一|二|三|四|五|六)\s*件\s*(.+?)套/);
-                            const listStackMatch = part.match(/在\s*(.+?)\s*中每裝備\s*(\d+|一|二|三|四|五|六)\s*件/);
-
-                            let multiplier = 1;
-                            if (stackMatch) {
-                                if (processedSetEffects.has(part)) return;
-                                processedSetEffects.add(part);
-                                const unit = cnToNum(stackMatch[1]);
-                                const cleanedStackSet = cleanName(stackMatch[2]);
-                                let currentCount = 0;
-                                Object.keys(setCounts).forEach(s => {
-                                    if (cleanName(s).includes(cleanedStackSet) || cleanedStackSet.includes(cleanName(s))) currentCount = setCounts[s];
-                                });
-                                multiplier = Math.floor(currentCount / unit);
-                            } else if (listStackMatch) {
-                                if (processedSetEffects.has(part)) return;
-                                processedSetEffects.add(part);
-                                const itemsInList = (listStackMatch[1].match(/【(.+?)】/g) || []).map(m => m.replace(/[【】]/g, '').trim());
-                                let currentCount = 0;
-                                itemsInList.forEach(name => { if (equippedNames.has(name)) currentCount++; });
-                                multiplier = Math.floor(currentCount / cnToNum(listStackMatch[2]));
-                            }
-
-                            if (multiplier <= 0) return;
-
-                            const eachRegex = /([武力|智力|魅力|統御|四維|基礎攻擊|基礎防禦|攻擊|防禦|兵力|速度|傷害|免傷|、\s]+)各\s*([+-]\s*\d+)(%?)/g;
-                            let em;
-                            while ((em = eachRegex.exec(part)) !== null) {
-                                let stats = em[1].split(/[、\s]+/).filter(Boolean);
-                                // 如果包含「四維」，展開為四個具體屬性
-                                if (stats.includes('四維')) {
-                                    stats = stats.filter(s => s !== '四維');
-                                    stats.push('武力', '智力', '統御', '魅力');
-                                }
-                                const val = parseInt(em[2].replace(/\s+/g, '')) * multiplier * currentSetMultiplier;
-                                const isPercent = em[3] === '%';
-                                stats.forEach(s => {
-                                    const key = s + (isPercent ? '%' : '');
-                                    totals[key] = (totals[key] || 0) + val;
-                                });
-                            }
-
-                            regex.lastIndex = 0;
-                            let m;
-                            while ((m = regex.exec(part)) !== null) {
-                                const prefix = m[1] || '';
-                                const statRaw = m[2] || m[8];
-                                const rawVal = m[4] || m[6];
-                                const unit = m[5] || m[7];
-                                
-                                if (statRaw && rawVal) {
-                                    const val = parseInt(rawVal.replace(/\s+/g, '')) * multiplier * currentSetMultiplier;
-                                    const isPercent = unit === '%';
-                                    
-                                    const statNames = statRaw.split(/[/\s、]+/).filter(s => s.trim());
-                                    statNames.forEach(sn => {
-                                        let finalName = sn.trim();
-                                        const map = { '武': '武力', '智': '智力', '統': '統御', '魅': '魅力' };
-                                        if (map[finalName]) finalName = map[finalName];
-
-                                        const key = prefix + finalName + (isPercent ? '%' : '');
-                                        totals[key] = (totals[key] || 0) + val;
-                                    });
-                                }
-                            }
-                        });
-                    });
-                }
-            });
-            
-            // 處理英雄宿命與副將特技的屬性加成
-            Object.entries(combinedEffects.value).forEach(([key, effects]) => {
-                if (key.startsWith('🌟') || key.startsWith('🎖️')) {
-                    effects.forEach(effObj => {
-                        const skillText = (typeof effObj === 'object') ? effObj.text : effObj;
-                        const isActive = (typeof effObj === 'object') ? effObj.isActive : true;
-                        
-                        if (!isActive) return; // 僅對生效的技能進行屬性累加
-
-                        // 1. 處理四維加成，例如：全四維各+1
-                        const swMatch = skillText.match(/(?:全)?四維(?:各)?([+-]\d+)/);
-                        if (swMatch) {
-                            const val = parseInt(swMatch[1]);
-                            ['武力', '智力', '魅力', '統御'].forEach(s => {
-                                totals[s] = (totals[s] || 0) + val;
-                            });
-                        }
-
-                        // 2. 處理具體單項屬性，例如：武力+2 或 步兵速度+3
-                        regex.lastIndex = 0;
-                        let m;
-                        while ((m = regex.exec(skillText)) !== null) {
-                            const prefix = m[1] || '全軍';
-                            const statName = m[2] || m[8];
-                            const rawVal = m[4] || m[6];
-                            const unit = m[5] || m[7];
-
-                            if (statName && rawVal) {
-                                // 檢查軍種限制：如果指定了軍種（如步兵），主將必須具備該軍種
-                                const mainHeroCat = heroState.value.fullCategory || '';
-                                const isTypeMatch = prefix === '全軍' || mainHeroCat.includes(prefix);
-                                
-                                if (isTypeMatch) {
-                                    const val = parseInt(rawVal.replace(/\s+/g, ''));
-                                    const isPercent = unit === '%';
-                                    
-                                    // 支援合併屬性，如：智/統
-                                    const statNames = statName.split(/[/\s、]+/).filter(s => s.trim());
-                                    statNames.forEach(sn => {
-                                        let finalName = sn.trim();
-                                        const map = { '武': '武力', '智': '智力', '統': '統御', '魅': '魅力' };
-                                        if (map[finalName]) finalName = map[finalName];
-
-                                        const key = finalName + (isPercent ? '%' : '');
-                                        totals[key] = (totals[key] || 0) + val;
-                                    });
-                                }
-                            }
-                        }
-                    });
-                }
-            });
-
-            // 確保四維屬性始終以固定順序呈現，沒有加成則顯示 0
-            const siweiOrder = ['武力', '智力', '魅力', '統御'];
-            const finalTotals = {};
-            
-            siweiOrder.forEach(k => {
-                finalTotals[k] = totals[k] || 0;
-            });
-            
-            return finalTotals;
-
+            const config = { ...selectedEquip.value };
+            return calculateTotalStats(config);
         });
 
         const allSets = computed(() => {
             const setMap = {};
-            const list = allItems.value || [];
-            list.forEach(item => {
-                if (item.sets) {
-                    item.sets.split(/\s+/).forEach(s => {
-                        const trimmed = s.trim();
-                        if (trimmed) setMap[trimmed] = true;
-                    });
-                }
-            });
+            (allItems.value || []).forEach(item => { if (item.sets) item.sets.split(/\s+/).forEach(s => { if (s.trim()) setMap[s.trim()] = true; }); });
             return Object.keys(setMap).sort((a, b) => a.localeCompare(b, 'zh-TW'));
         });
 
@@ -1140,11 +1146,11 @@ const SimulatorComponent = {
         const compress = (config) => {
             const slotOrder = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu', 'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p', 'rear_p', 'front_p'];
             const bytes = [];
-            
+
             // 1. 英雄 (24-bit / 3 bytes)
             const hHash = config.h ? (hashCode(config.h) & 0xFFFFFF) : 0;
             bytes.push((hHash >> 16) & 0xFF, (hHash >> 8) & 0xFF, hHash & 0xFF);
-            
+
             // 2. 狀態 (1 byte)
             // bit 0: isAwakened, bit 1: isReincarnated, bit 2: isLieutenant
             let status = 0;
@@ -1162,7 +1168,7 @@ const SimulatorComponent = {
                     if (slotId.endsWith('_p')) bytes.push(0);
                 } else {
                     const itemName = typeof val === 'string' ? val : (val.item ? val.item.name : val.n);
-                    
+
                     if (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p') {
                         const iHash = hashCode(itemName) & 0xFFFFFF;
                         bytes.push((iHash >> 16) & 0xFF, (iHash >> 8) & 0xFF, iHash & 0xFF);
@@ -1170,21 +1176,21 @@ const SimulatorComponent = {
                         const iHash = hashCode(itemName) & 0xFFFF;
                         bytes.push((iHash >> 8) & 0xFF, iHash & 0xFF);
                     }
-                    
+
                     if (slotId.endsWith('_p')) {
                         const idx = val.effectIdx !== undefined ? val.effectIdx : (val.i || 0);
                         bytes.push((idx + 1) & 0xFF);
                     }
                 }
             });
-            
+
             // 4. 副將 (放在最後以相容舊版本)
             ['rear_hero', 'front_hero'].forEach(slot => {
                 const name = config.e[slot];
                 const hHash = name ? (hashCode(name) & 0xFFFFFF) : 0;
                 bytes.push((hHash >> 16) & 0xFF, (hHash >> 8) & 0xFF, hHash & 0xFF);
             });
-            
+
             return btoa(String.fromCharCode(...bytes));
         };
 
@@ -1192,7 +1198,7 @@ const SimulatorComponent = {
             const binary = atob(encoded);
             const bytes = new Uint8Array(binary.length);
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            
+
             const slotOrder = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu', 'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p', 'rear_p', 'front_p'];
             const catMap = { '神兵': 'weapon', '坐騎': 'mount', '寶典': 'book', '奇珍': 'treasure', '令符': 'token' };
             const scopedMaps = { hero: {}, weapon: {}, mount: {}, book: {}, treasure: {}, token: {}, allEquip: {} };
@@ -1207,30 +1213,30 @@ const SimulatorComponent = {
             (items || []).forEach(i => {
                 const h16 = hashCode(i.name) & 0xFFFF;
                 const h24 = hashCode(i.name) & 0xFFFFFF;
-                const mappedCat = catMap[i.category]; 
+                const mappedCat = catMap[i.category];
                 if (mappedCat) {
                     if (!scopedMaps[mappedCat]) scopedMaps[mappedCat] = {};
-                    scopedMaps[mappedCat][h16] = i; 
+                    scopedMaps[mappedCat][h16] = i;
                 }
-                scopedMaps.allEquip[h24] = i; 
+                scopedMaps.allEquip[h24] = i;
             });
 
             const config = { h: null, s: 0, e: {} };
             let p = 0;
-            
+
             // 1. 讀取主將 (24-bit)
             const hHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
             if (hHash !== 0) config.h = scopedMaps.hero[hHash] || null;
-            
+
             // 2. 狀態 (1 byte)
             config.s = bytes[p++];
-            
+
             // 3. 裝備
             slotOrder.forEach(slotId => {
                 const iHash = (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p')
                     ? (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++]
                     : (bytes[p++] << 8) | bytes[p++];
-                    
+
                 if (iHash !== 0) {
                     if (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p') {
                         config.e[slotId] = scopedMaps.allEquip[iHash];
@@ -1257,7 +1263,7 @@ const SimulatorComponent = {
                 const fHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
                 if (fHash !== 0) config.e.front_hero = scopedMaps.hero[fHash] || null;
             }
-            
+
             return config;
         };
 
@@ -1287,7 +1293,7 @@ const SimulatorComponent = {
 
         onMounted(() => {
             window.addEventListener('mousedown', handleClickOutside, true);
-            
+
             // 瀏覽器關閉/重新整理提醒
             window.addEventListener('beforeunload', (e) => {
                 if (window.isSimulatorDirty) {
@@ -1301,7 +1307,7 @@ const SimulatorComponent = {
                 let encoded = '';
                 const hash = window.location.hash;
                 const search = window.location.search;
-                
+
                 // 先嘗試從 hash 提取 (優先級較高，且需手動處理 + 號問題)
                 const hashMatch = hash.match(/[?&]c=([^&]+)/);
                 if (hashMatch) {
@@ -1318,16 +1324,16 @@ const SimulatorComponent = {
                     const target = decodeURIComponent(encoded);
                     let unwatch;
                     unwatch = watch(
-                        [() => props.allItems, allHeroes], 
+                        [() => props.allItems, allHeroes],
                         ([items, heroes]) => {
                             if (items && items.length > 0 && heroes && heroes.length > 0) {
                                 try {
                                     const config = decompress(target, heroes, items);
                                     loadConfig(config);
-                                } catch (e) {}
+                                } catch (e) { }
                                 if (unwatch) unwatch();
                             }
-                        }, 
+                        },
                         { immediate: true, deep: true }
                     );
                 }
@@ -1341,35 +1347,51 @@ const SimulatorComponent = {
         });
 
         return {
-            activeSlot, slotSearchQuery, selectedEquip, simulatorSlots,
-            filteredSlotItems, selectItemForSlot, handleSearchBlur,
-            clearAllEquip, hasSelectedItems, combinedEffects,
-            statAggregation, allSets, applySet, isEffectActive,
-            heroState, syncGender,
-            renderEffectSegments(eff, sourceItemName = null) {
-                if (eff && typeof eff === 'object' && eff.text) {
-                    return [{ text: eff.text, active: eff.isActive }];
-                }
-                if (typeof eff !== 'string') return [{ text: eff, active: true }];
-                // 智能分割並連動判定：確保戰鬥情境不被拆散
-                const segments = eff.split(/(；|;|[，,](?![^；;]*(?:受到|對|敵方|敵軍))(?=[^；;]*(?:裝備時|每裝備|品質達到|身份|等級|武將|文官|全才|男性|女性)))/);
-                const result = [];
-                for (let i = 0; i < segments.length; i++) {
-                    const seg = segments[i];
-                    if (seg === '；' || seg === ';' || seg === '，' || seg === ',') {
-                        if (result.length > 0 && result[result.length - 1].hidden) continue;
-                        result.push({ text: seg, active: true });
-                    } else if (seg.trim()) {
-                        // 只有當整段文字僅包含品質說明，且沒有具體屬性加成時才隱藏
-                        const isGoldTag = seg.includes('品質達到金色') && !seg.includes('+') && !seg.includes('傷害') && !seg.includes('兵力');
-                        result.push({
-                            text: seg,
-                            active: isEffectActive(seg, sourceItemName),
-                            hidden: isGoldTag
+            activeSlot, slotSearchQuery, sortStats, selectedEquip, simulatorSlots,
+            filteredSlotItems, activeSlotItems, selectItemForSlot, handleSearchBlur,
+            toggleSortStat(stat) {
+                const idx = sortStats.value.indexOf(stat);
+                if (idx === -1) sortStats.value.push(stat);
+                else sortStats.value.splice(idx, 1);
+            },
+            getSortBonus(item, slot, cachedCurrentTotals = null) {
+                if (sortStats.value.length === 0) return 0;
+                const currentTotals = cachedCurrentTotals || calculateTotalStats();
+                const tempEquip = { ...selectedEquip.value };
+                const isDeitySlot = slot.id && slot.id.endsWith('_p');
+
+                let total = 0;
+                if (isDeitySlot) {
+                    let maxItemBonus = -Infinity;
+                    (item.effects || []).forEach((eff, idx) => {
+                        tempEquip[slot.id] = { item, effectIdx: idx };
+                        const potentialTotals = calculateTotalStats(tempEquip);
+                        let currentItemBonus = 0;
+                        sortStats.value.forEach(stat => {
+                            currentItemBonus += (potentialTotals[stat] || 0) - (currentTotals[stat] || 0);
                         });
-                    }
+                        if (currentItemBonus > maxItemBonus) maxItemBonus = currentItemBonus;
+                    });
+                    total = maxItemBonus;
+                } else {
+                    tempEquip[slot.id] = item;
+                    const potentialTotals = calculateTotalStats(tempEquip);
+                    sortStats.value.forEach(stat => {
+                        total += (potentialTotals[stat] || 0) - (currentTotals[stat] || 0);
+                    });
                 }
-                return result.filter(r => !r.hidden);
+                return total;
+            },
+            clearAllEquip, hasSelectedItems, combinedEffects,
+            statAggregation, allSets, applySet,
+            heroState,
+            renderEffectSegments(eff, source = null) {
+                if (!eff) return [];
+                const interpretation = interpretEffectSync(eff, source, selectedEquip.value);
+                return interpretation.words.map(word => ({
+                    text: word.text,
+                    active: word.isActive
+                }));
             },
             allHeroes, updateHeroAttributes,
             heroSearchQuery, showHeroSearch, filteredHeroes, selectHero,
@@ -1377,7 +1399,7 @@ const SimulatorComponent = {
             handleSlotClick, getHeroImage,
             isSummaryOpen,
             soulJadeSlots, partialSlots,
-            selectPartialEffect, popoverView, pendingItem, backToItems,
+            popoverView, pendingItem, backToItems,
             shareConfig() {
                 const config = {
                     h: heroState.value.selectedHeroName,
@@ -1394,13 +1416,13 @@ const SimulatorComponent = {
                         config.e[k] = typeof v === 'string' ? v : v.name;
                     }
                 });
-                
+
                 try {
                     const encoded = compress(config);
                     // 取得不含參數的基礎路徑
                     const baseUrl = window.location.origin + window.location.pathname;
                     const shareUrl = `${baseUrl}#sim?c=${encoded}`;
-                    
+
                     // 備援機制：如果無法使用剪貼簿 API (如 Android 無痕模式)，則改用 prompt
                     if (navigator.clipboard && navigator.clipboard.writeText) {
                         navigator.clipboard.writeText(shareUrl).then(() => {
@@ -1484,16 +1506,27 @@ const SimulatorComponent = {
                             </div>
                             
                             <div v-if="activeSlot === slot.id" :class="['slot-search-popover', { 'upwards': isPopoverUpwards(slot.id) }]" :style="getPopoverStyle(slot.id)">
-                                <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + slot.name + '...'" autofocus @blur="handleSearchBlur">
-                                <div class="search-results-list">
-                                    <div v-for="item in filteredSlotItems(slot)" :key="item.name" 
-                                         class="search-result-item" 
-                                         @mousedown="selectItemForSlot(slot.id, item)">
-                                        <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                        <span>{{ item.name }}</span>
+                                <div class="popover-sort-options">
+                                    <div class="sort-label-main">依屬性排序</div>
+                                    <div class="sort-checkboxes">
+                                        <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
+                                            <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
+                                        </label>
                                     </div>
-                                    <div v-if="filteredSlotItems(slot).length === 0" class="no-results">無相符結果</div>
                                 </div>
+                                <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + slot.name + '...'" autofocus @blur="handleSearchBlur">
+                                            <div class="search-results-list">
+                                                <div v-for="item in activeSlotItems" :key="item.name" 
+                                                     class="search-result-item" 
+                                                     @mousedown="selectItemForSlot(slot.id, item)">
+                                                    <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
+                                                    <div class="result-info">
+                                                        <div class="result-name">{{ item.name }}</div>
+                                                        <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
+                                                    </div>
+                                                </div>
+                                                <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
+                                            </div>
                             </div>
                         </div>
                     </div>
@@ -1538,26 +1571,43 @@ const SimulatorComponent = {
                             <div v-if="activeSlot === slot.id" :class="['slot-search-popover', { 'upwards': isPopoverUpwards(slot.id) }]" :style="getPopoverStyle(slot.id)">
                                 <!-- 副將英雄搜尋模式 -->
                                 <template v-if="slot.id === 'rear_hero' || slot.id === 'front_hero'">
+                                    <div class="popover-sort-options">
+                                        <div class="sort-label-main">依屬性排序</div>
+                                        <div class="sort-checkboxes">
+                                            <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
+                                                <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
+                                            </label>
+                                        </div>
+                                    </div>
                                     <input type="text" v-model="heroSearchQuery" :placeholder="'搜尋' + slot.name + '...'" autofocus>
                                     <div class="hero-results-list">
                                         <div v-for="h in filteredHeroes" :key="h.name" class="hero-result-item" @mousedown="selectHero(h.name)">
                                             <span class="hero-result-name">{{ h.name }}</span>
                                             <span class="hero-result-tags">({{ h.category }})</span>
+                                            <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': h._sortBonus < 0, 'sort-zero': h._sortBonus === 0 }]" style="margin-left: auto;">{{ h._sortBonus > 0 ? '+' : '' }}{{ h._sortBonus }}</div>
                                         </div>
                                     </div>
                                 </template>
-                                <!-- 一般裝備搜尋模式 -->
                                 <template v-else>
+                                    <div class="popover-sort-options">
+                                        <div class="sort-label-main">依屬性排序</div>
+                                        <div class="sort-checkboxes">
+                                            <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
+                                                <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
+                                            </label>
+                                        </div>
+                                    </div>
                                     <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋所有裝備...'" autofocus @blur="handleSearchBlur">
                                     <div class="search-results-list">
-                                        <div v-for="item in filteredSlotItems(slot)" :key="item.name" 
-                                             class="search-result-item" 
-                                             @mousedown="selectItemForSlot(slot.id, item)">
+                                        <div v-for="item in activeSlotItems" :key="item.name" class="search-result-item" @mousedown="selectItemForSlot(slot.id, item)">
                                             <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                            <span>{{ item.name }}</span>
-                                            <span style="font-size: 0.7rem; opacity: 0.5; margin-left: auto;">{{ item.category }}</span>
+                                            <div class="result-info">
+                                                <div class="result-name">{{ item.name }}</div>
+                                                <div style="font-size: 0.7rem; opacity: 0.5; margin-left: auto;">{{ item.category }}</div>
+                                                <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]" style="margin-left: 8px; min-width: 32px; text-align: right;">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
+                                            </div>
                                         </div>
-                                        <div v-if="filteredSlotItems(slot).length === 0" class="no-results">無相符結果</div>
+                                        <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
                                     </div>
                                 </template>
                             </div>
@@ -1587,18 +1637,26 @@ const SimulatorComponent = {
                                 <div class="popover-viewport">
                                     <div class="popover-track" :class="{ 'slide-effects': popoverView === 'effects' }">
                                         <div class="popover-layer items-layer">
+                                            <div class="popover-sort-options">
+                                                <div class="sort-label-main">依屬性排序</div>
+                                                <div class="sort-checkboxes">
+                                                    <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
+                                                        <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
+                                                    </label>
+                                                </div>
+                                            </div>
                                             <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + slot.category + '...'" autofocus @blur="handleSearchBlur">
                                             <div class="search-results-list">
-                                                <div v-for="item in filteredSlotItems(slot)" :key="item.name" 
-                                                     class="search-result-item" 
-                                                     @mousedown="selectItemForSlot(slot.id, item)">
+                                                <div v-for="item in activeSlotItems" :key="item.name" class="search-result-item" @mousedown="selectItemForSlot(slot.id, item)">
                                                     <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                                    <span>{{ item.name }}</span>
+                                                    <div class="result-info">
+                                                        <div class="result-name">{{ item.name }}</div>
+                                                        <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
+                                                    </div>
                                                 </div>
-                                                <div v-if="filteredSlotItems(slot).length === 0" class="no-results">無相符結果</div>
+                                                <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
                                             </div>
                                         </div>
-
                                         <div class="popover-layer effects-layer" v-if="pendingItem">
                                             <div class="popover-layer-header">
                                                 <button class="popover-back-btn" @click="backToItems"><i class="fas fa-chevron-left"></i></button>
@@ -1608,7 +1666,7 @@ const SimulatorComponent = {
                                                 <div v-for="(eff, idx) in pendingItem.effects" 
                                                      :key="idx" 
                                                      class="popover-effect-item"
-                                                     @click="selectPartialEffect(slot.id, idx)">
+                                                     @click="selectItemForSlot(slot.id, pendingItem, idx)">
                                                     <span class="eff-idx">{{ idx + 1 }}</span>
                                                     <span class="eff-text">{{ eff }}</span>
                                                 </div>
@@ -1643,18 +1701,19 @@ const SimulatorComponent = {
                                     <span class="stat-value" :class="{ 'pos': val > 0, 'neg': val < 0 }">{{ val > 0 ? '+' + val : val }}</span>
                                 </div>
                             </div>
-                            <div v-if="Object.keys(statAggregation).length === 0" class="no-stats-hint">（無可量化屬性）</div>
                         </div>
 
                         <!-- 裝備詳細清單 -->
-                        <div v-for="(effects, itemName) in combinedEffects" :key="itemName" class="summary-group">
-                            <div class="summary-item-title">{{ itemName }}</div>
+                        <div v-for="item in combinedEffects" :key="item.label" class="summary-group">
+                            <div class="summary-item-title">{{ item.label }}</div>
                             <ul class="summary-effects-list">
-                                <li v-for="(eff, idx) in effects" :key="idx">
-                                    <span v-for="(seg, sidx) in renderEffectSegments(eff, itemName)" :key="sidx" :class="{ 'inactive-segment': !seg.active }">
-                                        {{ seg.text }}
-                                    </span>
-                                    <span v-if="!isEffectActive(eff, itemName)" class="inactive-tag">(未達成條件)</span>
+                                <li v-for="(eff, idx) in item.effects" :key="idx">
+                                    <template v-for="segments in [renderEffectSegments(eff, item.source)]">
+                                        <span v-for="(seg, sidx) in segments" :key="sidx" :class="{ 'inactive-segment': !seg.active }">
+                                            {{ seg.text }}
+                                        </span>
+                                        <span v-if="segments.length > 0 && !segments.every(s => s.active)" class="inactive-tag">(未達成條件)</span>
+                                    </template>
                                 </li>
                             </ul>
                         </div>
