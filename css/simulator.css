@@ -7,7 +7,7 @@
     display: grid;
     grid-template-columns: 1fr 450px;
     gap: 20px;
-    height: 85%; /* 鎖定高度，防止被內容撐開 */
+    height: calc(100vh - 120px); /* 扣除頂部導覽列與內距，確保不超出畫面 */
     min-height: 600px;
     align-items: stretch;
     animation: fadeIn 0.5s ease-out;
@@ -750,8 +750,9 @@
     border-radius: 12px;
     display: flex;
     flex-direction: column;
-    height: 100%; 
-    min-height: 0; /* 重要：允許彈窗高度小於其內容，觸發內部捲動 */
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
     overflow: hidden;
 }
@@ -868,7 +869,7 @@
 
 .summary-content {
     flex: 1;
-    padding: 1rem;
+    padding: 0 1rem 1rem 1rem; /* 移除頂部 padding，由 sticky header 控制 */
     overflow-y: auto;
     scrollbar-width: thin;
 }
@@ -1063,7 +1064,10 @@
 
 /* Aggregated Stats Styles */
 .aggregated-stats {
-    background: rgba(212, 175, 55, 0.05);
+    position: sticky;
+    top: 0;
+    background: #191e23;
+    z-index: 20;
     padding: 15px;
     border-radius: 8px;
     border: 1px solid rgba(212, 175, 55, 0.2);
