@@ -34,6 +34,11 @@ const EquipmentListComponent = {
                             <option value="ALL">取得來源</option>
                             <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
                         </select>
+                        <select v-if="category === 'hero'" class="merge-select" v-model="upgradeFilter">
+                            <option value="ALL">覺醒</option>
+                            <option value="NONE">沒有覺醒</option>
+                            <option v-for="up in uniqueUpgrades" :key="up" :value="up">{{ up }}</option>
+                        </select>
 
                         <select v-if="category !== 'hero' && category !== 'scheme' && category !== 'god'" class="merge-select" v-model="setFilter">
                             <option value="ALL">完整套裝</option>
@@ -48,7 +53,11 @@ const EquipmentListComponent = {
                     :class="['card', { 'hero-card': item.group === 'hero' }]" @click="selectedItem = item">
                     <div :class="['tag', 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
                     <div class="release-tag" v-if="item.release !== undefined">{{ formatRelease(item.release) }}</div>
-                    <div class="source-tag" v-if="item.source && (Array.isArray(item.source) ? item.source.length : item.source)">{{ Array.isArray(item.source) ? item.source.join(' / ') : item.source }}</div>
+                    <div class="source-tag" v-if="item.source && (Array.isArray(item.source) ? item.source.length : item.source)">
+                        <span v-for="(s, sidx) in (Array.isArray(item.source) ? item.source : [item.source])" :key="sidx">
+                            {{ formatBitmask(s) }}{{ sidx < (Array.isArray(item.source) ? item.source.length : 1) - 1 ? ' / ' : '' }}
+                        </span>
+                    </div>
                     <div class="card-img-container" :class="{'silhouette-bg': item.group === 'hero' && !item.image}">
                         <img :src="item.image ? 'img/' + item.image : (item.group === 'hero' ? 'img/hero709770614.png' : 'img/unknown.png')" 
                             :alt="item.name" loading="lazy"
@@ -65,6 +74,7 @@ const EquipmentListComponent = {
                             <span v-for="s in (item.sets ? item.sets.split(' ') : [])" :key="s" class="mini-tag">{{ s }}</span>
                             <span v-for="t in (item.tags || [])" :key="t" class="mini-tag upgrade-mini-tag" v-if="t === '可升級'">{{ t }}</span>
                             <span v-for="t in (item.tags || [])" :key="t" class="mini-tag" v-else>{{ t }}</span>
+                            <span v-for="u in (item.upgrade || [])" :key="u" class="mini-tag cave-mini-tag" v-if="typeof u === 'string' && (u.includes('_'))">{{ formatBitmask(u) }}</span>
                         </div>
                     </div>
                 </div>
@@ -135,7 +145,18 @@ const EquipmentListComponent = {
                                             })" :key="c" class="mini-tag">{{ c }}</span>
                                         </div>
                                         <div class="equip-release" style="margin-top: 10px;">開放時機: {{ formatRelease(selectedItem.release) }}</div>
-                                        <div class="equip-source" v-if="selectedItem.source && selectedItem.source.length" style="margin-top: 5px;">取得來源: {{ Array.isArray(selectedItem.source) ? selectedItem.source.join(' / ') : selectedItem.source }}</div>
+                                        <div class="equip-source" v-if="selectedItem.source && (Array.isArray(selectedItem.source) ? selectedItem.source.length : selectedItem.source)" style="margin-top: 5px;">
+                                            取得來源: 
+                                            <span v-for="(src, sidx) in (Array.isArray(selectedItem.source) ? selectedItem.source : [selectedItem.source])" :key="sidx">
+                                                {{ formatBitmask(src) }}{{ sidx < (Array.isArray(selectedItem.source) ? selectedItem.source.length : 1) - 1 ? ' / ' : '' }}
+                                            </span>
+                                        </div>
+                                        <div class="equip-source" v-if="selectedItem.upgrade && (Array.isArray(selectedItem.upgrade) ? selectedItem.upgrade.length : selectedItem.upgrade)" style="margin-top: 5px;">
+                                            覺醒: 
+                                            <span v-for="(up, uidx) in selectedItem.upgrade" :key="uidx">
+                                                {{ formatBitmask(up) }}{{ uidx < selectedItem.upgrade.length - 1 ? ' / ' : '' }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -301,6 +322,7 @@ const EquipmentListComponent = {
         const tagFilter = ref('ALL');
         const frontFilter = ref('ALL');
         const rearFilter = ref('ALL');
+        const upgradeFilter = ref('ALL');
 
         const selectedItem = ref(null);
 
@@ -314,6 +336,7 @@ const EquipmentListComponent = {
             setFilter.value = 'ALL';
             frontFilter.value = 'ALL';
             rearFilter.value = 'ALL';
+            upgradeFilter.value = 'ALL';
 
             checkUrlParams();
         });
@@ -337,8 +360,40 @@ const EquipmentListComponent = {
                 return val.map(v => formatRelease(v)).join(' / ');
             }
             if (val === 0 || val === '0') return '開服';
-            if (val > 0 && val <= 8) return val + '合';
+            if (val >= 1 && val <= 8) return val + '合';
             return val;
+        };
+
+        const formatBitmask = (str) => {
+            if (typeof str !== 'string') return str;
+            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '英雄塚'];
+            let prefix = '';
+            let maskStr = '';
+            
+            for (const p of bitmaskPrefixes) {
+                if (str.startsWith(p + '_')) {
+                    prefix = p;
+                    maskStr = str.split('_')[1];
+                    break;
+                }
+            }
+
+            if (!prefix) return str;
+
+            const mask = parseInt(maskStr);
+            const folds = [];
+            for (let i = 0; i <= 10; i++) {
+                if ((mask >> i) & 1) {
+                    folds.push(i === 0 ? '開服' : i + '合');
+                }
+            }
+
+            // 特殊規則：英雄塚如果只有一個位元，代表「從該合起常駐」
+            if (prefix === '英雄塚' && folds.length === 1) {
+                return `${prefix}(${folds[0]}~)`;
+            }
+
+            return `${prefix}(${folds.join('/')})`;
         };
 
         const shareItem = (item) => {
@@ -393,19 +448,65 @@ const EquipmentListComponent = {
         // --- 過濾邏輯 ---
         const uniqueSources = computed(() => {
             const sourcesSet = new Set();
+            const bitmaskPrefixes = ['英雄塚'];
+            const foundBitmasks = new Set();
+
             const categoryItems = props.allItems.filter(item => item.group === props.category);
             categoryItems.forEach(item => {
                 if (item.source) {
-                    if (Array.isArray(item.source)) {
-                        item.source.forEach(s => {
-                            if (s) sourcesSet.add(s);
-                        });
-                    } else {
-                        sourcesSet.add(item.source);
-                    }
+                    const sources = Array.isArray(item.source) ? item.source : [item.source];
+                    sources.forEach(s => {
+                        if (!s) return;
+                        let matched = false;
+                        for (const p of bitmaskPrefixes) {
+                            if (s.startsWith(p + '_')) {
+                                foundBitmasks.add(p);
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) sourcesSet.add(s);
+                    });
                 }
             });
-            return [...sourcesSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+            const result = [...sourcesSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+            [...foundBitmasks].sort().reverse().forEach(p => result.unshift(p));
+            return result;
+        });
+
+        const uniqueUpgrades = computed(() => {
+            const upSet = new Set();
+            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+            const foundPrefixes = new Set();
+
+            const list = props.allItems.filter(item => item.group === 'hero');
+            list.forEach(item => {
+                if (item.upgrade) {
+                    const upgrades = Array.isArray(item.upgrade) ? item.upgrade : [item.upgrade];
+                    upgrades.forEach(u => {
+                        if (!u) return;
+                        let matched = false;
+                        for (const p of bitmaskPrefixes) {
+                            if (u.startsWith(p + '_')) {
+                                foundPrefixes.add(p);
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) {
+                            upSet.add(u);
+                        }
+                    });
+                }
+            });
+            const result = [...upSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
+            // 將 Bitmask 類別排在最前面
+            const sortedPrefixes = [...foundPrefixes].sort((a, b) => {
+                const order = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+                return order.indexOf(a) - order.indexOf(b);
+            });
+            sortedPrefixes.reverse().forEach(p => result.unshift(p));
+            return result;
         });
 
         const uniqueSets = computed(() => {
@@ -495,14 +596,29 @@ const EquipmentListComponent = {
             }
             if (sourceFilter.value !== 'ALL') {
                 list = list.filter(item => {
-                    if (Array.isArray(item.source)) {
-                        return item.source.includes(sourceFilter.value);
+                    const sources = Array.isArray(item.source) ? item.source : [item.source];
+                    const bitmaskPrefixes = ['英雄塚'];
+                    if (bitmaskPrefixes.includes(sourceFilter.value)) {
+                        return sources.some(s => s.startsWith(sourceFilter.value + '_'));
                     }
-                    return item.source === sourceFilter.value;
+                    return sources.includes(sourceFilter.value);
                 });
             }
             if (setFilter.value !== 'ALL') {
                 list = list.filter(item => item.sets && item.sets.split(' ').includes(setFilter.value));
+            }
+            if (upgradeFilter.value !== 'ALL') {
+                list = list.filter(item => {
+                    if (upgradeFilter.value === 'NONE') {
+                        return !item.upgrade || (Array.isArray(item.upgrade) && item.upgrade.length === 0);
+                    }
+                    const upgrades = Array.isArray(item.upgrade) ? item.upgrade : [item.upgrade];
+                    const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+                    if (bitmaskPrefixes.includes(upgradeFilter.value)) {
+                        return upgrades.some(u => u.startsWith(upgradeFilter.value + '_'));
+                    }
+                    return upgrades.includes(upgradeFilter.value);
+                });
             }
             if (tagFilter.value !== 'ALL') {
                 const filterVal = tagFilter.value.trim();
@@ -545,7 +661,8 @@ const EquipmentListComponent = {
                         ...(item.tags || []),
                         ...(item.effects || []),
                         ...(item.spell || []),
-                        ...(item.mutation || [])
+                        ...(item.mutation || []),
+                        ...(item.upgrade || []).map(u => formatBitmask(u))
                     ].join(' ').toLowerCase();
                     return keywords.every(kw => haystack.includes(kw));
                 });
@@ -581,9 +698,9 @@ const EquipmentListComponent = {
 
         return {
             searchQuery, mergeFilter, sourceFilter, typeFilter, setFilter, tagFilter, 
-            frontFilter, rearFilter, selectedItem,
-            uniqueSources, uniqueSets, uniqueTags, filteredItems,
-            getCardTag, formatRelease, selectedItem, activityTable,
+            frontFilter, rearFilter, upgradeFilter, selectedItem,
+            uniqueSources, uniqueSets, uniqueTags, uniqueUpgrades, uniqueReleases, filteredItems,
+            getCardTag, formatRelease, formatBitmask, selectedItem, activityTable,
             shareItem
         };
     }
