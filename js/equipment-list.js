@@ -7,7 +7,7 @@ const EquipmentListComponent = {
                     <input type="text" v-model="searchQuery" placeholder="搜尋武將、裝備或道具名稱...">
                     <div class="select-row">
                         <select class="merge-select category-select" v-model="tagFilter">
-                            <option value="ALL">稀有度</option>
+                            <option value="ALL">{{ category === 'scheme' ? '類型' : (category === 'god' ? '五行' : '稀有度') }}</option>
                             <option v-for="t in uniqueTags" :key="t" :value="t">{{ t }}</option>
                         </select>
                         <select v-if="category === 'hero'" class="merge-select" v-model="typeFilter">
@@ -26,17 +26,16 @@ const EquipmentListComponent = {
                             <option value="弓兵">弓兵</option>
                             <option value="方士">方士</option>
                         </select>
-                        <select class="merge-select" v-model="mergeFilter">
+                        <select v-if="category !== 'scheme'" class="merge-select" v-model="mergeFilter">
                             <option value="ALL">開放時機</option>
-                            <option :value="0">開服</option>
-                            <option v-for="n in 8" :key="n" :value="n">{{ n }}合</option>
+                            <option v-for="r in uniqueReleases" :key="r" :value="r">{{ formatRelease(r) }}</option>
                         </select>
-                        <select class="merge-select" v-model="sourceFilter">
+                        <select v-if="category !== 'scheme'" class="merge-select" v-model="sourceFilter">
                             <option value="ALL">取得來源</option>
                             <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
                         </select>
 
-                        <select v-if="category !== 'hero'" class="merge-select" v-model="setFilter">
+                        <select v-if="category !== 'hero' && category !== 'scheme' && category !== 'god'" class="merge-select" v-model="setFilter">
                             <option value="ALL">完整套裝</option>
                             <option v-for="s in uniqueSets" :key="s" :value="s">{{ s }}</option>
                         </select>
@@ -136,7 +135,6 @@ const EquipmentListComponent = {
                                             })" :key="c" class="mini-tag">{{ c }}</span>
                                         </div>
                                         <div class="equip-release" style="margin-top: 10px;">開放時機: {{ formatRelease(selectedItem.release) }}</div>
-                                        <div class="equip-source" v-if="selectedItem.upgrade" style="margin-top: 5px;">覺醒方式: {{ selectedItem.upgrade }}</div>
                                         <div class="equip-source" v-if="selectedItem.source && selectedItem.source.length" style="margin-top: 5px;">取得來源: {{ Array.isArray(selectedItem.source) ? selectedItem.source.join(' / ') : selectedItem.source }}</div>
                                     </div>
                                 </div>
@@ -195,6 +193,55 @@ const EquipmentListComponent = {
                                     <div v-if="selectedItem.bio" class="hero-section" style="background: rgba(0,0,0,0.2);">
                                         <div class="hero-section-title">傳記</div>
                                         <div class="hero-section-text" style="font-style: italic; opacity: 0.9;">{{ selectedItem.bio }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+
+                        <template v-else-if="category === 'god'">
+                            <div class="modal-details god-panel">
+                                <button class="modal-close-btn" @click="selectedItem = null">×</button>
+                                <button class="modal-share-btn" @click="shareItem(selectedItem)" title="分享此項目"><i class="fas fa-share-alt"></i></button>
+                                <div class="equip-header god-header">
+                                    <div class="god-detail-img-container">
+                                        <img :src="selectedItem.image ? 'img/' + selectedItem.image : 'img/unknown.png'" alt="Preview" class="god-detail-img" @error="$event.target.src = 'img/unknown.png'">
+                                    </div>
+                                    <div class="god-detail-right">
+                                        <div class="modal-title god-title">{{ selectedItem.name }}</div>
+                                        <div class="equip-release">開放時機: {{ formatRelease(selectedItem.release) }}</div>
+                                        <div class="equip-source" v-if="selectedItem.source" style="margin-top: 5px;">取得來源: {{ selectedItem.source }}</div>
+                                    </div>
+                                </div>
+                                <div class="god-scroll-area">
+                                    <!-- 變異區塊 -->
+                                    <div v-if="selectedItem.mutation_name" class="god-section mutation-section">
+                                        <div class="god-section-title mutation-title">變異◆{{ selectedItem.mutation_name }}</div>
+                                        <div class="god-section-text mutation-text">
+                                            <div v-for="t in selectedItem.mutation" :key="t">{{ t }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 怒氣條件 -->
+                                    <div v-if="selectedItem.rage_cond && selectedItem.rage_cond.length" class="god-section rage-section">
+                                        <div class="god-section-text rage-text">
+                                            <div v-for="t in selectedItem.rage_cond" :key="t">{{ t }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 神通 -->
+                                    <div v-if="selectedItem.spell_name" class="god-section spell-section">
+                                        <div class="god-section-title spell-title">神通【{{ selectedItem.spell_name }}】</div>
+                                        <div class="god-section-text spell-text">
+                                            <div v-for="t in selectedItem.spell" :key="t">{{ t }}</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 神靈被動 -->
+                                    <div v-if="selectedItem.effects && selectedItem.effects.length" class="god-section passive-section">
+                                        <div class="god-section-title passive-title">神靈被動</div>
+                                        <div class="god-section-text passive-text">
+                                            <div v-for="t in selectedItem.effects" :key="t">{{ t }}</div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -280,6 +327,8 @@ const EquipmentListComponent = {
             if (cats.includes('名將')) return '名將';
             if (cats.includes('傳奇')) return '傳奇';
             if (item.group === 'equip') return '裝備';
+            if (item.group === 'god') return '神靈';
+            if (item.group === 'scheme') return '戰計';
             return '道具';
         };
 
@@ -398,6 +447,7 @@ const EquipmentListComponent = {
             });
             const tagOrder = [
                 '良才', '名將', '巾幗', '國士', '傳奇',
+                '金', '木', '水', '火', '土',
                 '武將', '文官', '全才',
                 '步兵', '騎兵', '弓兵', '方士'
             ];
@@ -415,6 +465,21 @@ const EquipmentListComponent = {
                     if (idxB !== -1) return 1;
                     return a.localeCompare(b, 'zh-TW');
                 });
+        });
+
+        const uniqueReleases = computed(() => {
+            const list = props.allItems.filter(item => item.group === props.category);
+            const releases = new Set();
+            list.forEach(item => {
+                if (item.release !== undefined) {
+                    if (Array.isArray(item.release)) {
+                        item.release.forEach(r => releases.add(r));
+                    } else {
+                        releases.add(item.release);
+                    }
+                }
+            });
+            return [...releases].sort((a, b) => a - b);
         });
 
         const filteredItems = computed(() => {
@@ -475,8 +540,12 @@ const EquipmentListComponent = {
                         item.sets,
                         item.attr || '',
                         item.notes || '',
+                        item.spell_name || '',
+                        item.mutation_name || '',
                         ...(item.tags || []),
-                        ...(item.effects || [])
+                        ...(item.effects || []),
+                        ...(item.spell || []),
+                        ...(item.mutation || [])
                     ].join(' ').toLowerCase();
                     return keywords.every(kw => haystack.includes(kw));
                 });
