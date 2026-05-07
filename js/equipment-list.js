@@ -384,16 +384,14 @@ const EquipmentListComponent = {
             const folds = [];
             for (let i = 0; i <= 10; i++) {
                 if ((mask >> i) & 1) {
-                    folds.push(i === 0 ? '開服' : i + '合');
+                    folds.push(i === 0 ? '開服' : i);
                 }
             }
-
-            // 特殊規則：英雄塚如果只有一個位元，代表「從該合起常駐」
+            const suffix = folds.some(f => f !== '開服') ? '合' : '';
             if (prefix === '英雄塚' && folds.length === 1) {
-                return `${prefix}(${folds[0]}~)`;
+                return `${prefix}(${folds.join('/')}${suffix}起)`;
             }
-
-            return `${prefix}(${folds.join('/')})`;
+            return `${prefix}(${folds.join('/')}${suffix})`;
         };
 
         const shareItem = (item) => {
