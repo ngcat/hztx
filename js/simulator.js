@@ -4,7 +4,7 @@
 const SimulatorComponent = {
     props: ['allItems'],
     setup(props) {
-        const EFFECT_SPLIT_REGEX = /(；|;|(?<!時)(?:，|,)(?=[^；;]*?裝備時))/;
+        const EFFECT_SPLIT_REGEX = /(；|;|。|(?<!時)(?:，|,)(?=[^；;。]*?裝備時))/;
         const { ref, computed, watch, onMounted, onUnmounted, toRef } = Vue;
         const allItems = toRef(props, 'allItems');
 
