@@ -1220,7 +1220,7 @@ const SimulatorComponent = {
             return btoa(String.fromCharCode(...bytes));
         };
 
-        const decompress = (encoded, heroes, items) => {
+        const decompress = (encoded, heroes, items, gods) => {
             const binary = atob(encoded);
             const bytes = new Uint8Array(binary.length);
             for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
@@ -1230,6 +1230,9 @@ const SimulatorComponent = {
             const scopedMaps = { hero: {}, weapon: {}, mount: {}, book: {}, treasure: {}, token: {}, allEquip: {} };
 
             // 使用傳入的資料建立查找表
+            (gods || []).forEach(g => {
+                scopedMaps.allEquip[hashCode(g.name) & 0xFFFFFF] = g;
+            });
             (heroes || []).forEach(h => {
                 const baseName = h.name;
                 scopedMaps.hero[hashCode(baseName) & 0xFFFFFF] = baseName;
@@ -1356,11 +1359,11 @@ const SimulatorComponent = {
                     const target = decodeURIComponent(encoded);
                     let unwatch;
                     unwatch = watch(
-                        [() => props.allItems, allHeroes],
-                        ([items, heroes]) => {
-                            if (items && items.length > 0 && heroes && heroes.length > 0) {
+                        [() => props.allItems, allHeroes, allGods],
+                        ([items, heroes, gods]) => {
+                            if (items && items.length > 0 && heroes && heroes.length > 0 && gods && gods.length > 0) {
                                 try {
-                                    const config = decompress(target, heroes, items);
+                                    const config = decompress(target, heroes, items, gods);
                                     loadConfig(config);
                                 } catch (e) { }
                                 if (unwatch) unwatch();
