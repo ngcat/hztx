@@ -160,7 +160,8 @@
 .equip-slot.mount_p .slot-badge,
 .equip-slot.book_p .slot-badge,
 .equip-slot.treasure_p .slot-badge,
-.equip-slot.token_p .slot-badge {
+.equip-slot.token_p .slot-badge,
+.equip-slot.god .slot-badge {
     background: linear-gradient(135deg, var(--primary-red), #600);
     color: white;
 }
@@ -189,7 +190,8 @@
 }
 
 /* 副將頭像放大並置頂 */
-.lieutenant-hero-img {
+.lieutenant-hero-img,
+.equip-slot.god .full-equip-display img {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
@@ -200,7 +202,8 @@
     transition: transform 0.3s ease;
 }
 
-.slot-card:hover .lieutenant-hero-img {
+.slot-card:hover .lieutenant-hero-img,
+.slot-card:hover .equip-slot.god .full-equip-display img {
     transform: scale(2.2) translateY(-5px); 
 }
 
@@ -215,12 +218,37 @@
     padding: 3px 0 !important;
     text-align: center;
     z-index: 5;
-    border-top: 1px solid rgba(0, 128, 128, 0.5);
+}
+
+.equip-slot.god .slot-item-name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    color: #ffcccc !important; /* 神靈位改用紅色系文字 */
+    font-size: 0.75rem !important;
+    padding: 3px 0 !important;
+    text-align: center;
+    z-index: 5;
+    border-top: 1px solid rgba(255, 100, 100, 0.4);
 }
 
 .equip-slot.hunyu .plus-icon {
     color: rgba(100, 80, 255, 0.4);
 }
+
+.equip-slot.god .plus-icon {
+    color: rgba(255, 100, 100, 0.4);
+}
+
+.equip-slot.god .slot-card {
+    border-color: rgba(255, 100, 100, 0.3);
+    background: rgba(255, 100, 100, 0.05);
+    border-style: solid !important;
+}
+
+
 
 /* 魂玉/副將行佈局 */
 .souljade-row {

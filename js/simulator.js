@@ -27,7 +27,9 @@ const SimulatorComponent = {
                 } else if (key === 'rear_hero' || key === 'front_hero') {
                     items.push({ name: val, category: '副將' });
                 } else {
-                    items.push(val);
+                    const item = Object.create(val);
+                    item.slotKey = key;
+                    items.push(item);
                 }
             });
             return items;
@@ -374,10 +376,15 @@ const SimulatorComponent = {
                     }
                 }
 
+                let effects = item.effects || [];
+                if (item.slotKey === 'god') {
+                    effects = effects.concat(item.mutation || [], item.rage_cond || [], item.spell || []);
+                }
+
                 result.display.push({
                     label: displayName,
                     source: item.name || item.parentName,
-                    effects: (item.effects || [])
+                    effects: effects
                 });
             });
             return result;
@@ -395,7 +402,7 @@ const SimulatorComponent = {
 
             // 1. total_equip(): 裝備統計
             const calculateEquipStats = () => {
-                const equipItems = equippedItems.filter(i => i.category !== '副將');
+                const equipItems = equippedItems.filter(i => i.category !== '副將' && i.slotKey !== 'god');
                 const hasYulinLing = equipConfig.token && (equipConfig.token.name === '羽林令' || equipConfig.token === '羽林令');
                 const yulinMultipliers = hasYulinLing ? [2, 2, 2, 1, 1] : [1, 1, 1, 1, 1];
 
@@ -458,6 +465,7 @@ const SimulatorComponent = {
             'hunyu': null,
             'rear_hero': null,
             'front_hero': null,
+            'god': null,
             'weapon_p': null,
             'mount_p': null,
             'book_p': null,
@@ -609,7 +617,8 @@ const SimulatorComponent = {
         const soulJadeSlots = [
             { id: 'rear_hero', name: '後軍副將', badge: null },
             { id: 'front_hero', name: '前軍副將', badge: null },
-            { id: 'hunyu', name: '魂玉', badge: '3合魂玉' }
+            { id: 'hunyu', name: '魂玉', badge: '3合魂玉' },
+            { id: 'god', name: '神靈', badge: null }
         ];
 
         const partialSlots = [
@@ -762,7 +771,9 @@ const SimulatorComponent = {
         const filteredSlotItems = (slot) => {
             const categoryName = slot.category || slot.name;
             let list = allItems.value;
-            if (['hunyu', 'rear_p', 'front_p'].includes(slot.id)) {
+            if (slot.id === 'god') {
+                list = list.filter(item => item.group === 'god');
+            } else if (slot.id === 'hunyu') {
                 list = list.filter(item => ['神兵', '坐騎', '寶典', '奇珍', '令符'].includes(item.category));
             } else {
                 list = list.filter(item => item.category === categoryName);
@@ -796,6 +807,10 @@ const SimulatorComponent = {
             // 建立裝飾後的清單，不修改原始 allItems
             let resultList = list.map(item => {
                 const decorated = Object.create(item); // 使用原型繼承，避免觸發響應式
+                if (slot.id === 'god') {
+                    decorated._sortBonus = 0;
+                    return decorated;
+                }
                 let maxItemBonus = 0;
                 let bestIdx = 0;
 
@@ -1055,7 +1070,7 @@ const SimulatorComponent = {
         const applySet = (setName) => {
             if (!setName) {
                 Object.keys(selectedEquip.value).forEach(k => {
-                    const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'hunyu'].includes(k);
+                    const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'god'].includes(k);
                     if (!exclude) selectedEquip.value[k] = null;
                 });
                 return;
@@ -1070,7 +1085,7 @@ const SimulatorComponent = {
             if (setItems.length === 0) return;
 
             Object.keys(selectedEquip.value).forEach(k => {
-                const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'hunyu'].includes(k);
+                const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'god'].includes(k);
                 if (!exclude) selectedEquip.value[k] = null;
             });
             const usedItems = new Set();
@@ -1191,6 +1206,11 @@ const SimulatorComponent = {
                 bytes.push((hHash >> 16) & 0xFF, (hHash >> 8) & 0xFF, hHash & 0xFF);
             });
 
+            // 5. 神靈 (最後加入)
+            const gName = config.e['god'];
+            const gHash = gName ? (hashCode(typeof gName === 'string' ? gName : (gName.name || gName.n || '')) & 0xFFFFFF) : 0;
+            bytes.push((gHash >> 16) & 0xFF, (gHash >> 8) & 0xFF, gHash & 0xFF);
+
             return btoa(String.fromCharCode(...bytes));
         };
 
@@ -1262,6 +1282,12 @@ const SimulatorComponent = {
             if (p + 3 <= bytes.length) {
                 const fHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
                 if (fHash !== 0) config.e.front_hero = scopedMaps.hero[fHash] || null;
+            }
+
+            // 5. 神靈 (如果還有剩餘位元組)
+            if (p + 3 <= bytes.length) {
+                const gHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
+                if (gHash !== 0) config.e.god = scopedMaps.allEquip[gHash] || null;
             }
 
             return config;
@@ -1532,6 +1558,7 @@ const SimulatorComponent = {
                             <div class="slot-label">{{ slot.name }}</div>
                             <div class="slot-card" @click="handleSlotClick(slot)">
                                 <div v-if="slot.id === 'hunyu'" class="slot-badge" style="background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white;">3合魂玉</div>
+                                <div v-else-if="slot.id === 'god'" class="slot-badge">6合神靈</div>
                                 <div v-else-if="slot.badge" class="slot-badge">{{ slot.badge }}</div>
                                 
                                 <!-- 副將英雄顯示 -->
@@ -1585,7 +1612,7 @@ const SimulatorComponent = {
                                     </div>
                                 </template>
                                 <template v-else>
-                                    <div class="popover-sort-options">
+                                    <div class="popover-sort-options" v-if="slot.id !== 'god'">
                                         <div class="sort-label-main">依屬性排序</div>
                                         <div class="sort-checkboxes">
                                             <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
@@ -1593,10 +1620,10 @@ const SimulatorComponent = {
                                             </label>
                                         </div>
                                     </div>
-                                    <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋所有裝備...'" autofocus @blur="handleSearchBlur">
+                                    <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + (slot.id === 'god' ? '神靈' : '所有裝備') + '...'" autofocus @blur="handleSearchBlur">
                                     <div class="search-results-list">
                                         <div v-for="item in activeSlotItems" :key="item.name" class="search-result-item" @mousedown="selectItemForSlot(slot.id, item)">
-                                            <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
+                                            <img v-if="slot.id !== 'god'" :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
                                             <div class="result-info">
                                                 <div class="result-name">{{ item.name }}</div>
                                                 <div style="font-size: 0.7rem; opacity: 0.5; margin-left: auto;">{{ item.category }}</div>
