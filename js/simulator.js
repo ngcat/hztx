@@ -489,12 +489,18 @@ const SimulatorComponent = {
         });
 
         const allHeroes = ref([]);
+        const allGods = ref([]);
 
         // 載入英雄資料
         fetch('data/hero.json').then(res => res.json()).then(data => {
             allHeroes.value = data;
             // 預設選中關羽並同步屬性
             updateHeroAttributes('關羽');
+        });
+
+        // 獨立載入神靈資料
+        fetch('data/god.json').then(res => res.json()).then(data => {
+            allGods.value = data.map(item => ({ ...item, group: 'god' }));
         });
 
 
@@ -772,7 +778,7 @@ const SimulatorComponent = {
             const categoryName = slot.category || slot.name;
             let list = allItems.value;
             if (slot.id === 'god') {
-                list = list.filter(item => item.group === 'god');
+                list = allGods.value;
             } else if (slot.id === 'hunyu') {
                 list = list.filter(item => ['神兵', '坐騎', '寶典', '奇珍', '令符'].includes(item.category));
             } else {
