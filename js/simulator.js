@@ -362,7 +362,7 @@ const SimulatorComponent = {
             });
 
             getEquippedItemsSync(equipConfig).forEach((item, index) => {
-                if (item.category === '套裝' || item.category === '副將') return;
+                if (item.category === '副將') return;
 
                 let displayName = item.name || item.parentName || "未知裝備";
                 if (item.isPartial) {
@@ -1074,13 +1074,12 @@ const SimulatorComponent = {
 
 
         const applySet = (setName) => {
-            if (!setName) {
-                Object.keys(selectedEquip.value).forEach(k => {
-                    const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'god'].includes(k);
-                    if (!exclude) selectedEquip.value[k] = null;
-                });
-                return;
-            }
+            const standardSlots = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu'];
+            
+            // 統一正向篩選：一開始就先清空基礎 5 個插槽與魂玉位
+            standardSlots.forEach(k => selectedEquip.value[k] = null);
+
+            if (!setName) return;
 
             const list = allItems.value || [];
             const setItems = list.filter(item => {
@@ -1090,10 +1089,6 @@ const SimulatorComponent = {
 
             if (setItems.length === 0) return;
 
-            Object.keys(selectedEquip.value).forEach(k => {
-                const exclude = k.endsWith('_p') || ['rear_hero', 'front_hero', 'god'].includes(k);
-                if (!exclude) selectedEquip.value[k] = null;
-            });
             const usedItems = new Set();
 
             // 如果神靈位裝備了屬於該套裝的物品，優先移除神靈位的該裝備，避免衝突
