@@ -305,30 +305,18 @@ const SimulatorComponent = {
 
 
 
-        const getCombinedEffectsSync = (equipConfig) => {
-            const result = {
-                skills: {},
-                display: [] // 改為陣列結構
-            };
-
+        const getHeroAndLieutSkillsSync = (equipConfig) => {
+            const skills = { rear_hero: [], front_hero: [], hero_fate: [] };
             const hasLieutenant = !!(equipConfig.rear_hero || equipConfig.front_hero);
 
             if (hasLieutenant) {
                 const mainHero = allHeroes.value.find(h => h.name === heroState.value.selectedHeroName);
                 if (mainHero) {
-                    const fateList = [];
                     ['talents', 'fates', 'awakening', 'holy_awakening', 'reincarnation'].forEach(cat => {
                         if (mainHero[cat]) mainHero[cat].forEach(skillText => {
-                            if (skillText.includes('同時上陣')) fateList.push(skillText);
+                            if (skillText.includes('同時上陣')) skills.hero_fate.push(skillText);
                         });
                     });
-                    if (fateList.length > 0) {
-                        result.display.push({
-                            label: `🌟 ${mainHero.name}・技能宿命`,
-                            source: 'HERO_SKILL',
-                            effects: fateList
-                        });
-                    }
                 }
             }
 
@@ -337,18 +325,42 @@ const SimulatorComponent = {
                 if (lieutName) {
                     const hero = allHeroes.value.find(h => h.name === lieutName.replace(/^(神·|聖·)/, ''));
                     if (hero) {
-                        const skills = [];
                         let cats = ['talents'];
                         if (lieutName.startsWith('聖·')) cats.push('holy_awakening'); else if (lieutName.startsWith('神·')) cats.push('awakening');
                         cats.forEach(cat => {
                             if (hero[cat]) hero[cat].forEach(skill => {
                                 if (skill.includes('作為主將') && !skill.includes('或副將')) return;
                                 if (/(作為|擔任|擔當|身為).*?副將|副將品質加成|品質加成\(副將\)|\(副將\)|主將(武力|智力|統御|魅力|屬性|攻擊|防禦|兵力|速度|基礎)/.test(skill)) {
-                                    skills.push(skill);
+                                    skills[slotId].push(skill);
                                 }
                             });
                         });
-                        if (skills.length > 0) {
+                    }
+                }
+            });
+            return skills;
+        };
+
+        const getCombinedEffectsSync = (equipConfig) => {
+            const result = {
+                skills: {},
+                display: [] 
+            };
+
+            const extractedSkills = getHeroAndLieutSkillsSync(equipConfig);
+
+            if (extractedSkills.hero_fate.length > 0) {
+                result.display.push({
+                    label: `🌟 ${heroState.value.selectedHeroName}・技能宿命`,
+                    source: 'HERO_SKILL',
+                    effects: extractedSkills.hero_fate
+                });
+            }
+
+            ['rear_hero', 'front_hero'].forEach(slotId => {
+                const skills = extractedSkills[slotId];
+                if (skills && skills.length > 0) {
+                    const lieutName = equipConfig[slotId];
                             const posLabel = slotId === 'front_hero' ? '前軍' : '後軍';
                             result.display.push({
                                 label: `🎖️ ${posLabel}副將・${lieutName}`,
@@ -356,8 +368,6 @@ const SimulatorComponent = {
                                 effects: skills
                             });
                             result.skills[slotId] = skills.map(s => ({ text: s }));
-                        }
-                    }
                 }
             });
 
@@ -420,22 +430,21 @@ const SimulatorComponent = {
 
             // 2. total_副將(): 副將與主將技能統計
             const calculateLieutenantStats = () => {
-                const combined = getCombinedEffectsSync(equipConfig);
+                const extractedSkills = getHeroAndLieutSkillsSync(equipConfig);
+                
                 // 副將技能
-                Object.entries(combined.skills || {}).forEach(([slotId, skills]) => {
-                    skills.forEach(skillObj => {
-                        const { totalStats } = interpretEffectSync(skillObj.text, slotId, equipConfig);
+                ['rear_hero', 'front_hero'].forEach(slotId => {
+                    extractedSkills[slotId].forEach(skillText => {
+                        // 注意：副將技能通常不帶 context，因為它的條件比較單純
+                        const { totalStats } = interpretEffectSync(skillText, slotId, equipConfig);
                         Object.keys(totalStats).forEach(k => { totals[k] = (totals[k] || 0) + totalStats[k]; });
                     });
                 });
+
                 // 主將技能/宿命
-                (combined.display || []).forEach(item => {
-                    if (item.source === 'HERO_SKILL') {
-                        item.effects.forEach(effText => {
-                            const { totalStats } = interpretEffectSync(effText, 'HERO_SKILL', equipConfig, context);
+                extractedSkills.hero_fate.forEach(skillText => {
+                    const { totalStats } = interpretEffectSync(skillText, 'HERO_SKILL', equipConfig, context);
                             Object.keys(totalStats).forEach(k => { totals[k] = (totals[k] || 0) + totalStats[k]; });
-                        });
-                    }
                 });
             };
 
