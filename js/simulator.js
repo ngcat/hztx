@@ -34,23 +34,33 @@ const SimulatorComponent = {
             });
             return items;
         };
-        const checkSegmentSync = (segment, sourceItemName, equipConfig) => {
+        const checkSegmentSync = (segment, sourceItemName, equipConfig, context = null) => {
             if (!segment || typeof segment !== 'string') return true;
-            const equippedItems = getEquippedItemsSync(equipConfig);
 
-            // 1. 過濾出所有「非觀察者」裝備 (不含「裝備5件金色品質」詞條)
+            let setCounts, equippedNames, goldCount;
+            
+            // 若上層有提供 context，直接套用，省去重複掃描所有裝備的時間
+            if (context && context.setCounts) {
+                setCounts = context.setCounts;
+                equippedNames = context.equippedNames;
+                goldCount = context.goldCount;
+            } else {
+                // 退回模式 (例如 UI 單件預覽時)，手動計算一次
+            const equippedItems = getEquippedItemsSync(equipConfig);
             const normalItems = equippedItems.filter(item => {
                 return !(item.effects || []).some(eff => typeof eff === 'string' && eff.includes('裝備5件金色品質'));
             });
-
-            // 2. 預計算品質與套裝計數
-            const goldCount = normalItems.filter(item => item.name && !item.name.includes('紫色')).length;
-            const setCounts = {};
+                goldCount = normalItems.filter(item => item.name && !item.name.includes('紫色')).length;
+                setCounts = {};
             normalItems.forEach(item => {
                 if (item.sets) {
                     item.sets.split(' ').forEach(s => { if (s.trim()) setCounts[s.trim()] = (setCounts[s.trim()] || 0) + 1; });
                 }
             });
+                equippedNames = new Set(equippedItems.map(i => i.name));
+                if (equipConfig.rear_hero) equippedNames.add(equipConfig.rear_hero);
+                if (equipConfig.front_hero) equippedNames.add(equipConfig.front_hero);
+            }
 
             // 3. 解析需求並判斷
             const countMatch = segment.match(/裝備\s*(\d+)\s*件(金色品質)?\s*(.+?)(?:套|時|$)/);
@@ -64,22 +74,17 @@ const SimulatorComponent = {
                 if (cleanedRequiredSet && cleanedRequiredSet !== '金色' && cleanedRequiredSet !== '品質') {
                     Object.keys(setCounts).forEach(s => {
                         if (cleanName(s).includes(cleanedRequiredSet) || cleanedRequiredSet.includes(cleanName(s))) {
-                            currentCount += setCounts[s]; // 改為累加，防止名稱不一導致覆蓋
+                            currentCount += setCounts[s]; 
                         }
                     });
                 } else if (isGoldReq) {
                     currentCount = goldCount;
                 }
 
-                // 直接判斷加總後的數量
                 if (currentCount < required) return false;
             }
 
-            // 4. 同時上陣/裝備判定 (使用完整名單，因為英雄不屬於裝備觀察者)
-            const equippedNames = new Set(equippedItems.map(i => i.name));
-            if (equipConfig.rear_hero) equippedNames.add(equipConfig.rear_hero);
-            if (equipConfig.front_hero) equippedNames.add(equipConfig.front_hero);
-
+            // 4. 同時上陣/裝備判定
             if (segment.includes('同時上陣') || segment.includes('同時裝備') || segment.includes('必須含有')) {
                 const bracketMatch = segment.match(/\(([^)]+)\)/);
                 const pairMatch = segment.match(/(?:同時裝備|必須含有|同時上陣)\s*(?:【)?([^，；。）】\s]+)(?:】)?/);
@@ -226,7 +231,7 @@ const SimulatorComponent = {
                 }
 
                 // 2. 條件判定
-                if (!checkSegmentSync(processedPart, sourceItemName, equipConfig)) {
+                if (!checkSegmentSync(processedPart, sourceItemName, equipConfig, context)) {
                     results.words.push({ text: part, stats: {}, isLinkage, isActive: false });
                     return;
                 }
@@ -401,11 +406,21 @@ const SimulatorComponent = {
         };
         const calculateTotalStats = (equipConfig = selectedEquip.value) => {
             const totals = {};
-            const context = { setCounts: {}, equippedNames: new Set() };
+            const context = { setCounts: {}, equippedNames: new Set(), goldCount: 0 };
             const equippedItems = getEquippedItemsSync(equipConfig);
+            
+            // 獨立算出 normalItems (不含「裝備5件金色品質」詞條)，以防迴圈依賴
+            const normalItems = equippedItems.filter(item => {
+                return !(item.effects || []).some(eff => typeof eff === 'string' && eff.includes('裝備5件金色品質'));
+            });
+            context.goldCount = normalItems.filter(item => item.name && !item.name.includes('紫色')).length;
+            
+            normalItems.forEach(item => {
+                if (item.sets) item.sets.split(' ').forEach(s => { if (s.trim()) context.setCounts[s.trim()] = (context.setCounts[s.trim()] || 0) + 1; });
+            });
+
             equippedItems.forEach(item => {
                 if (item.name) context.equippedNames.add(item.name);
-                if (item.sets) item.sets.split(' ').forEach(s => { if (s.trim()) context.setCounts[s.trim()] = (context.setCounts[s.trim()] || 0) + 1; });
             });
             if (equipConfig.rear_hero) context.equippedNames.add(equipConfig.rear_hero);
             if (equipConfig.front_hero) context.equippedNames.add(equipConfig.front_hero);
