@@ -1,3 +1,6 @@
 [
-    { "id": "equip", "name": "⚔️ 裝備" }
+    { "id": "equip", "name": "⚔️ 裝備" },
+    { "id": "hero", "name": "🎖️ 英雄" },
+    { "id": "scheme", "name": "📜 戰計" },
+    { "id": "god", "name": "✨ 神靈" }
 ]
