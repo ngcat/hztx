@@ -7,7 +7,7 @@
     display: grid;
     grid-template-columns: 1fr 450px;
     gap: 20px;
-    height: calc(100vh - 120px); /* 扣除頂部導覽列與內距，確保不超出畫面 */
+    height: calc(100vh - 120px); /* 扣除頂部導航欄高度 */
     min-height: 600px;
     align-items: stretch;
     animation: fadeIn 0.5s ease-out;
@@ -15,8 +15,8 @@
 
 @media (max-width: 900px) {
     .simulator-container {
-        grid-template-columns: 1fr; /* 手機板改為單欄，右側統計區會掉到下方 */
-        height: auto; /* 解除高度鎖定，讓內容自然往下長 */
+        grid-template-columns: 1fr; /* 手機版改為單欄佈局 */
+        height: auto; /* 取消固定高度，由內容撐開 */
         padding: 10px;
     }
 }
@@ -37,7 +37,7 @@
     gap: 12px;
     width: 100%;
     padding: 30px 0;
-    flex-wrap: nowrap; /* 強制單行 */
+    flex-wrap: nowrap; /* 禁止換行 */
     background: radial-gradient(ellipse at center, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
     user-select: none;
     cursor: default;
@@ -53,19 +53,19 @@
 }
 
 .equip-slot.active {
-    z-index: 4000; /* 低於 top-nav (5000) */
+    z-index: 4000; /* 低於頂部導航欄層級 (5000) */
 }
 
 @media (max-width: 900px) {
     .equip-linear-wrapper {
-        flex-wrap: wrap !important; /* 強制允許換行 */
+        flex-wrap: wrap !important; /* 手機版改為自動換行 */
         padding: 20px 10px !important;
         gap: 15px 10px !important;
         justify-content: center !important;
     }
     
     .equip-slot {
-        width: calc(33.333% - 10px) !important; /* 強制一行 3 件 */
+        width: calc(33.333% - 10px) !important; /* 手機版一列三個 */
     }
 
     .slot-card {
@@ -103,7 +103,7 @@
     justify-content: center;
     position: relative;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    overflow: hidden; /* 恢復隱藏 */
+    overflow: hidden; /* 隱藏溢出內容 */
     backdrop-filter: blur(5px);
 }
 
@@ -147,7 +147,7 @@
     font-size: 0.7rem;
     padding: 2px 6px;
     border-bottom-right-radius: 6px;
-    z-index: 20; /* 提高層級 */
+    z-index: 20; /* 標籤置於頂層 */
     white-space: nowrap;
     font-weight: bold;
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
@@ -155,7 +155,7 @@
     line-height: 1.2;
 }
 
-/* 神靈位標籤顏色 */
+/* 稀有裝備/英雄標籤樣式 */
 .equip-slot.weapon_p .slot-badge,
 .equip-slot.mount_p .slot-badge,
 .equip-slot.book_p .slot-badge,
@@ -166,7 +166,7 @@
     color: white;
 }
 
-/* 副將位特殊樣式 (深青色實心框) */
+/* 副將/陣容位特殊樣式 (深青色系) */
 .equip-slot.rear_hero .slot-card,
 .equip-slot.front_hero .slot-card {
     border: 2px solid #008080 !important;
@@ -189,14 +189,14 @@
     color: #008080 !important;
 }
 
-/* 副將頭像放大並置頂 */
+/* 英雄/神兵大頭貼顯示優化 */
 .lieutenant-hero-img,
 .equip-slot.god .full-equip-display img {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
     object-position: top !important;
-    transform: scale(2) translateY(-5px); /* 放大 2 倍並向上偏移 5px */
+    transform: scale(2) translateY(-5px); /* 放大2倍並向上偏移 */
     transform-origin: top center;
     padding: 0 !important; 
     transition: transform 0.3s ease;
@@ -226,7 +226,7 @@
     left: 0;
     width: 100%;
     background: rgba(0, 0, 0, 0.8);
-    color: #ffcccc !important; /* 神靈位改用紅色系文字 */
+    color: #ffcccc !important; /* 神兵位置顯示品質顏色 */
     font-size: 0.75rem !important;
     padding: 3px 0 !important;
     text-align: center;
@@ -255,7 +255,7 @@
     display: flex;
     justify-content: flex-start !important;
     gap: 12px;
-    padding-left: calc(50% - 286px); /* 573px / 2 = 286.5px, 居中對齊的起始點 */
+    padding-left: calc(50% - 286px); /* 573px / 2 = 286.5px, 使三格置中對齊 */
 }
 
 .souljade-row .slot-card {
@@ -267,7 +267,7 @@
 
 
 .equip-slot.hunyu {
-    margin-left: 117px; /* 跳過第 3 格 (105px + 12px gap) */
+    margin-left: 117px; /* 對齊上排第三格 (105px + 12px gap) */
 }
 
 @media (max-width: 900px) {
@@ -303,7 +303,7 @@
     opacity: 1;
 }
 
-/* Autocomplete Popover */
+/* Autocomplete Popover 搜尋彈窗 */
 .slot-search-popover {
     position: absolute;
     top: 100%;
@@ -315,9 +315,9 @@
     border-radius: 12px;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.2);
     margin-top: 10px;
-    z-index: 4100; /* 低於 top-nav (5000) */
-    padding: 15px; /* 將 padding 移到最外層容器 */
-    box-sizing: border-box; /* 確保寬度包含 padding */
+    z-index: 4100; /* 低於頂部導航欄 (5000) */
+    padding: 15px; 
+    box-sizing: border-box; 
     backdrop-filter: blur(20px);
     animation: popoverFadeIn 0.2s ease-out;
     display: flex;
@@ -372,7 +372,7 @@
     cursor: pointer;
 }
 
-/* 統一捲軸樣式 */
+/* 捲動條自定義樣式 */
 .search-results-list::-webkit-scrollbar,
 .popover-effects-list::-webkit-scrollbar {
     width: 3px;
@@ -386,16 +386,15 @@
 
 .search-results-list,
 .popover-effects-list {
-    flex: 1; /* 填滿剩餘高度，解決高度不滿版問題 */
+    flex: 1; /* 彈性拉伸高度 */
     width: 100%;
-    /* 移除 max-height 限制，改由 flex 控制 */
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;
     scrollbar-color: rgba(212, 175, 55, 0.4) transparent;
 }
 
-/* 雙層選單視口與軌道 */
+/* 彈窗內部的多層切換視圖 */
 .popover-viewport {
     width: 100%;
     overflow: hidden;
@@ -405,13 +404,13 @@
     height: 100%;
     margin: 0;
     padding: 0;
-    min-height: 0; /* 重要：允許內部捲動 */
+    min-height: 0; 
 }
 
 .popover-track {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr; /* 強制列高不隨內容擴張，徹底解決 Grid 撐開的問題 */
+    grid-template-rows: 1fr; 
     width: 200%; 
     margin: 0;
     padding: 0;
@@ -427,13 +426,13 @@
 .popover-layer {
     width: 100%;
     flex-shrink: 0;
-    padding: 0; /* 外層已有 padding，此處歸零 */
+    padding: 0; 
     margin: 0;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 0; /* 重要：允許內部捲動 */
+    min-height: 0; 
     transition: opacity 0.3s ease;
 }
 
@@ -447,7 +446,7 @@
     pointer-events: none;
 }
 
-/* 內部元素已經由最外層的 padding 控制邊距 */
+/* 修正彈窗內元件的間距 */
 .slot-search-popover > input,
 .popover-layer > input,
 .popover-layer-header,
@@ -460,14 +459,14 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 2px; /* 縮小選項間距 */
+    gap: 2px; 
     flex: 1;
     min-height: 0; 
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-/* 詞條層樣式 */
+/* 彈窗內容標題 */
 .popover-layer-header {
     display: flex;
     align-items: center;
@@ -516,8 +515,8 @@
 .popover-effect-item {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(212, 175, 55, 0.15);
-    border-radius: 6px; /* 恢復圓角 */
-    padding: 8px 12px; /* 恢復適當內距 */
+    border-radius: 6px; 
+    padding: 8px 12px; 
     cursor: pointer;
     display: flex;
     align-items: flex-start;
@@ -558,15 +557,15 @@
     margin-top: 0;
     margin-bottom: 10px;
     box-shadow: 0 -15px 40px rgba(0, 0, 0, 0.8), 0 0 15px rgba(212, 175, 55, 0.2);
-    flex-direction: column-reverse; /* 基礎插槽輸入框反轉 */
+    flex-direction: column-reverse; /* 向上彈出時反轉元件順序 */
 }
 
-/* 神靈位雙層選單也需要反轉 */
+/* 向上彈出時反轉視圖順序 */
 .slot-search-popover.upwards .popover-layer {
     flex-direction: column-reverse;
 }
 
-/* 反轉後的間距調整（原先是 bottom 有間距，現在改為 top） */
+/* 修正向上彈出時的元件間距 */
 .slot-search-popover.upwards > input,
 .slot-search-popover.upwards .popover-layer > input,
 .slot-search-popover.upwards .popover-layer-header {
@@ -607,8 +606,8 @@
 .search-result-item {
     display: flex;
     align-items: center;
-    gap: 12px; /* 稍微增加圖文間距以配合放大的圖片 */
-    padding: 6px 10px; /* 縮小上下內距，讓選項更緊湊 */
+    gap: 12px; 
+    padding: 6px 10px; 
     cursor: pointer;
     transition: background 0.2s;
     border-radius: 6px;
@@ -619,7 +618,7 @@
 }
 
 .search-result-item img {
-    width: 42px; /* 圖片顯著放大 */
+    width: 42px; /* 搜尋結果圖標大小 */
     height: 42px;
     object-fit: contain;
     background: rgba(0, 0, 0, 0.3);
@@ -670,7 +669,7 @@
 
 
 
-/* Hero Search Styles */
+/* 英雄選擇樣式 */
 .hero-selector-group {
     display: flex;
     align-items: center;
@@ -764,12 +763,12 @@
 
 
 
-/* 確保 slot 容器有定位基準 */
+/* 插槽容器定位 */
 .equip-slot {
     position: relative;
 }
 
-/* Summary Section */
+/* 彙總面板 Summary Section */
 .simulator-summary {
     grid-column: 2 / 3;
     grid-row: 1 / 3;
@@ -785,51 +784,80 @@
     overflow: hidden;
 }
 
-/* 手機版響應式優化 */
+/* 預設隱藏關閉按鈕 (桌面版) */
+.summary-close-btn {
+    display: none;
+}
+
 @media (max-width: 900px) {
     .simulator-container {
-        grid-template-columns: 1fr; /* 單欄佈局 */
-        padding: 10px 10px 120px 10px !important; /* 增加底部空白，避免被懸浮按鈕擋住 */
+        grid-template-columns: 1fr; 
+        padding: 10px 10px 120px 10px !important; 
     }
 
     .simulator-summary {
         position: fixed;
         top: 60px;
         right: 0;
-        width: 320px;
-        max-width: 85%;
+        width: 100%;
         height: calc(100% - 60px);
-        z-index: 6000;
-        transform: translateX(105%);
-        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        border-radius: 12px 0 0 12px;
-        border-right: none;
+        z-index: 9000;
+        transform: translateX(100%);
+        visibility: hidden; /* 預設隱藏防止殘影 */
+        pointer-events: none;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s;
+        border: none; /* 手機版移除邊框 */
+        border-radius: 0;
         background: rgba(15, 20, 25, 0.98);
         backdrop-filter: blur(20px);
+        margin-top: 0;
     }
 
     .simulator-summary.mobile-open {
         transform: translateX(0);
+        visibility: visible;
+        pointer-events: auto;
     }
 
+    .summary-close-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        right: 15px;
+        top: 6px;
+        width: 32px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        color: #fff !important;
+        font-size: 1rem;
+        cursor: pointer;
+        z-index: 10000;
+        transition: all 0.2s;
+    }
+
+    .summary-close-btn:hover {
+        background: rgba(239, 68, 68, 0.9);
+        border-color: #ef4444;
+        transform: rotate(90deg);
+    }
     .mobile-summary-toggle {
         display: flex !important;
-        position: fixed;
-        bottom: 25px;
-        right: 25px;
-        background: linear-gradient(135deg, var(--primary-gold), #f1c40f);
-        color: black;
-        border: none;
-        border-radius: 50px;
-        padding: 12px 24px;
-        font-weight: bold;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.3);
-        z-index: 5500;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        transition: all 0.3s;
     }
+
+    .mobile-summary-toggle.is-open {
+        background: #ef4444;
+        color: white;
+        border-color: rgba(255,255,255,0.3);
+        box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+    }
+
+
+
+
+
 
     .summary-overlay {
         display: block !important;
@@ -854,11 +882,31 @@
 
 .mobile-summary-toggle {
     display: none;
+    position: fixed;
+    top: 64px; 
+    right: 8px;
+    width: 34px;
+    height: 34px;
+
+    background: linear-gradient(135deg, var(--primary-gold), #f1c40f);
+    color: black;
+    border: 1px solid rgba(0,0,0,0.3);
+    border-radius: 50%;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.3s, color 0.3s, border-radius 0.3s, width 0.3s, height 0.3s, box-shadow 0.3s, transform 0.3s;
+    font-size: 1rem;
 }
+
 
 .summary-overlay {
     display: none;
 }
+
 
 .summary-header {
     padding: 1rem;
@@ -876,7 +924,7 @@
 
 .clear-all-btn-header {
     position: absolute;
-    right: 10px;
+    left: 10px;
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.4);
     color: #fca5a5;
@@ -889,6 +937,7 @@
     font-weight: normal;
 }
 
+
 .clear-all-btn-header:hover {
     background: rgba(239, 68, 68, 0.4);
     color: white;
@@ -897,9 +946,156 @@
 
 .summary-content {
     flex: 1;
-    padding: 0 1rem 1rem 1rem; /* 移除頂部 padding，由 sticky header 控制 */
-    overflow-y: auto;
-    scrollbar-width: thin;
+    padding: 0 1rem 1rem 1rem;
+    overflow: hidden; 
+    display: flex;
+    flex-direction: column;
+}
+
+/* 詳細統計佈局 */
+.stat-summary-details {
+    display: flex;
+    gap: 15px;
+    margin-top: 5px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.stat-col {
+    flex: 0 0 calc(50% - 7.5px); /* 扣除 gap 的一半，達成精確 50/50 */
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0; /* 防止溢出 */
+}
+
+.stat-group {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.group-header {
+    font-size: 0.8rem;
+    color: var(--primary-gold);
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    padding-bottom: 3px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.group-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* 確保換行時數值對齊頂部 */
+    gap: 8px;
+    font-size: 0.82em;
+    padding: 2px 0;
+}
+
+/* 巔峰等級樣式區域 */
+.stat-detail-item.peak-item {
+    position: relative;
+    padding-top: 14px;
+    margin-top: 5px;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.stat-group.peak-group {
+    background: rgba(212, 175, 55, 0.05);
+    border: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.round-tag-badge {
+    position: absolute;
+    top: -2px;
+    left: 0;
+    font-size: 0.6rem;
+    padding: 0 4px;
+    background: var(--primary-gold);
+    color: #000;
+    border-radius: 2px;
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.peak-item .name {
+    color: #e5e7eb;
+}
+
+/* 核心數據面板樣式 */
+.core-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 8px 0 5px 0;
+}
+
+.core-stat-tag {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s;
+}
+
+.core-stat-tag:hover {
+    border-color: var(--primary-gold);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.core-stat-tag .tag-label {
+    background: var(--primary-gold);
+    color: #000;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    min-width: 40px;
+    text-align: center;
+}
+
+.core-stat-tag .tag-value {
+    flex: 1;
+    padding: 4px 10px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #fff;
+    text-align: center;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
+.core-stat-tag .tag-value::before {
+    content: '+';
+    font-size: 0.8rem;
+    opacity: 0.6;
+    margin-right: 2px;
+}
+
+
+.stat-detail-item .name {
+    color: rgba(255, 255, 255, 0.6);
+    white-space: normal; /* 允許換行 */
+    word-break: break-all;
+    line-height: 1.3;
+}
+
+.stat-detail-item .value {
+    color: #4ade80; /* positive green */
+    font-family: 'Roboto Mono', monospace;
+    font-weight: 500;
 }
 
 .summary-group {
@@ -966,11 +1162,11 @@
         gap: 4px;
         padding: 20px 2px;
         flex-wrap: nowrap;
-        overflow: visible; /* 關閉捲動 */
-        justify-content: center; /* 居中對齊 */
+        overflow: visible; 
+        justify-content: center; 
     }
     .equip-slot { 
-        width: 60px; /* 進一步縮小 */
+        width: 60px; 
         flex: 0 0 60px;
     }
     .slot-card { 
@@ -992,7 +1188,7 @@
     }
 }
 
-/* Simulator Controls */
+/* Simulator Controls 控制區 */
 .simulator-controls {
     grid-column: 1 / 2;
     width: 100%;
@@ -1072,7 +1268,7 @@
     color: white;
     padding: 0 12px;
     height: 35px;
-    width: 180px; /* 統一寬度 */
+    width: 180px; 
     border-radius: 6px;
     outline: none;
     cursor: pointer;
@@ -1090,7 +1286,7 @@
     color: white;
 }
 
-/* Aggregated Stats Styles */
+/* 數據匯總區 Aggregated Stats */
 .aggregated-stats {
     position: sticky;
     top: 0;
@@ -1147,7 +1343,39 @@
     padding: 10px;
 }
 
-/* Inactive Effect Styles */
+/* 次級屬性區樣式 */
+.sub-group-section {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.sub-group-section .stats-grid {
+    gap: 4px;
+}
+
+.sub-group-section .stat-pill {
+    padding: 4px 8px;
+}
+
+.sub-group-title {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 8px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.sub-group-title::before {
+    content: '';
+    display: inline-block;
+    width: 4px;
+    height: 12px;
+    background: var(--primary-gold);
+    margin-right: 6px;
+    border-radius: 2px;
+}
 .inactive-effect {
     opacity: 0.45;
     text-decoration: line-through;
@@ -1183,11 +1411,10 @@
 }
 
 .inactive-segment {
-    text-decoration: line-through;
-    text-decoration-color: rgba(239, 68, 68, 0.5); /* 淡淡的紅色刪除線 */
     opacity: 0.6;
     color: #94a3b8;
 }
+
 
 .inactive-tag {
     color: #ef4444;
@@ -1220,7 +1447,22 @@
 
 .hero-autocomplete-container {
     position: relative;
-    width: 180px; /* 統一寬度 */
+    width: 180px; 
+}
+
+.summary-header {
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-tag {
+    font-size: 1.1rem;
+    color: var(--primary-gold);
+    font-weight: bold;
+    letter-spacing: 1px;
 }
 
 .current-hero-display {
@@ -1249,7 +1491,7 @@
     position: absolute;
     top: calc(100% + 5px);
     left: 0;
-    width: 240px; /* 從 320px 縮小寬度 */
+    width: 240px; 
     background: #1a1e22;
     border: 1px solid var(--primary-gold);
     border-radius: 8px;
@@ -1308,7 +1550,7 @@
     white-space: nowrap;
 }
 
-/* 四維加總樣式 */
+/* 屬性數據格網樣式 */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -1351,7 +1593,7 @@
 .stat-pill .stat-value.pos { color: #4ade80; }
 .stat-pill .stat-value.neg { color: #f87171; }
 
-/* 魂玉插槽特殊樣式 */
+/* 魂玉位專屬樣式 */
 .equip-slot.hunyu .slot-card {
     border-style: dashed !important;
     border-color: rgba(168, 85, 247, 0.5) !important;
@@ -1369,16 +1611,7 @@
 }
 
 
-/* 神靈位插槽樣式統一 */
-.equip-slot.weapon_p .slot-card,
-.equip-slot.mount_p .slot-card,
-.equip-slot.book_p .slot-card,
-.equip-slot.treasure_p .slot-card,
-.equip-slot.token_p .slot-card {
-    padding: 0;
-}
-
-/* 隱藏神靈位內部的額外 UI，改用懸浮預覽窗處理 */
+/* 隱藏舊版屬性選擇 UI */
 .effect-selector, .selected-effect-preview {
     display: none !important;
 }
@@ -1388,7 +1621,7 @@
     flex-shrink: 0;
 }
 
-/* 詞條按鈕基礎樣式 */
+/* 裝備屬性強化狀態點樣式 */
 .effect-bit {
     width: 18px;
     height: 18px;
@@ -1431,4 +1664,84 @@
     align-items: center;
     gap: 5px;
     cursor: pointer;
+}
+
+/* 彙總面板 Tab 樣式 */
+.summary-tabs {
+    display: flex;
+    gap: 10px;
+    margin: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 8px;
+}
+
+.summary-tabs button {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    padding: 8px 0;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.summary-tabs button i {
+    font-size: 0.8rem;
+}
+
+.summary-tabs button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.summary-tabs button.active {
+    background: rgba(212, 175, 55, 0.15);
+    border-color: var(--primary-gold);
+    color: var(--primary-gold);
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.summary-tab-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding-right: 5px;
+}
+
+.summary-tab-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.summary-tab-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.summary-tab-content::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.3);
+    border-radius: 2px;
+}
+
+.summary-tab-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.5);
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 修復四維彙總位置 */
+.core-grid {
+    margin: 8px 0 5px 0;
 }
