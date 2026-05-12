@@ -1602,22 +1602,13 @@ const SimulatorComponent = {
             });
 
             const checkAndLoad = () => {
-                // 從 URL search 或 hash 中提取 c 參數
-                let encoded = '';
-                const hash = window.location.hash;
-                const search = window.location.search;
+                const urlParams = new URLSearchParams(window.location.search);
+                // 優先從 ?sim= 讀取，其次從舊有的 ?c= 讀取
+                let encoded = urlParams.get('sim') || urlParams.get('c');
 
-                // 先嘗試從 hash 提取 (優先級較高，且需手動處理 + 號問題)
-                const hashMatch = hash.match(/[?&]c=([^&]+)/);
-                if (hashMatch) {
-                    encoded = hashMatch[1];
-                } else {
-                    // 再嘗試從 search 提取
-                    const searchParams = new URLSearchParams(search);
-                    encoded = searchParams.get('c');
-                    // 如果是從 URLSearchParams 拿到的，要把空格轉回 + (因為 URLSearchParams 會自動轉換)
-                    if (encoded) encoded = encoded.replace(/ /g, '+');
-                }
+
+                if (encoded) encoded = encoded.replace(/ /g, '+');
+
 
                 if (encoded) {
                     const target = decodeURIComponent(encoded);
@@ -1627,7 +1618,7 @@ const SimulatorComponent = {
                         ([items, heroes, gods]) => {
                             if (items && items.length > 0 && heroes && heroes.length > 0 && gods && gods.length > 0) {
                                 try {
-                                    const config = decompress(target, heroes, items, gods);
+                                    const config = decompress(encoded, heroes, items, gods);
                                     loadConfig(config);
                                 } catch (e) { }
                                 if (unwatch) unwatch();
@@ -1727,9 +1718,12 @@ const SimulatorComponent = {
 
                 try {
                     const encoded = compress(config);
-                    // 取得不含參數的基礎路徑
-                    const baseUrl = window.location.origin + window.location.pathname;
-                    const shareUrl = `${baseUrl}#sim?c=${encoded}`;
+                    const url = new URL(window.location.origin + window.location.pathname);
+                    url.searchParams.set('sim', encoded);
+
+
+                    const shareUrl = url.toString();
+
 
                     // 備援機制：如果無法使用剪貼簿 API (如 Android 無痕模式)，則自動切換至手動複製
                     Utils.copyToClipboard(shareUrl).then(() => {

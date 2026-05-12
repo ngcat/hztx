@@ -88,52 +88,93 @@ createApp({
             }
         };
 
-        // --- 路由功能 ---
+        // --- 路由功能 (動態參數化) ---
         const handleRouting = () => {
-            const hash = window.location.hash.slice(1).split('?')[0];
-            const hasConfig = window.location.search.includes('c=') || window.location.hash.includes('c=');
+            const urlParams = new URLSearchParams(window.location.search);
+            const hash = window.location.hash.slice(1);
             
-            // 優先級：明確的 Hash > 分享參數
-            if (hash.startsWith('sim')) {
-                currentCategory.value = 'sim';
-            } else if (hash === 'disclaimer') {
-                currentCategory.value = 'disclaimer';
-            } else if (hash === 'equip') {
-                currentCategory.value = 'equip';
-            } else if (!hash && hasConfig) {
-                // 只有在首頁且帶有配置時，才強制進入模擬器
-                currentCategory.value = 'sim';
+            // 1. 自動轉換舊的 Hash 路由到 GET 參數
+            if (hash) {
+                const targetPage = hash.split('?')[0];
+                const newParams = new URLSearchParams(window.location.search);
+                newParams.set('page', targetPage);
+                window.history.replaceState(null, '', `${window.location.pathname}?${newParams.toString()}`);
+                window.location.hash = '';
+                return handleRouting(); // 重新跑一次解析
+            }
+
+            // 2. 優先尋找「分類即 Key」的參數 (例如 ?hero=XXX, ?sim=XXX)
+            let detectedPage = null;
+            let detectedQuery = null;
+
+            // 檢查是否有 ?sim= 參數
+            if (urlParams.has('sim')) {
+                detectedPage = 'sim';
+                detectedQuery = urlParams.get('sim');
             } else {
-                // 處理其他數據分類
-                const validCategory = categories.value.find(c => c.id === hash);
+                // 檢查是否有其他分類參數 (hero, weapon, horse 等)
+                for (const cat of categories.value) {
+                    if (urlParams.has(cat.id)) {
+                        detectedPage = cat.id;
+                        detectedQuery = urlParams.get(cat.id);
+                        break;
+                    }
+                }
+            }
+
+            // 3. 回退到顯性 ?page= 參數
+            const pageParam = detectedPage || urlParams.get('page');
+            const hasConfig = urlParams.has('c');
+            
+            if (pageParam === 'sim' || (!pageParam && hasConfig)) {
+                currentCategory.value = 'sim';
+                // 網址標準化 (可選，如果你想保持網址列整齊)
+            } else if (pageParam === 'disclaimer') {
+                currentCategory.value = 'disclaimer';
+            } else if (pageParam === 'equip' || !pageParam) {
+                currentCategory.value = 'equip';
+            } else {
+                const validCategory = categories.value.find(c => c.id === pageParam);
                 if (validCategory) {
-                    currentCategory.value = hash;
+                    currentCategory.value = pageParam;
                 } else {
-                    currentCategory.value = 'equip'; // 預設回裝備
+                    currentCategory.value = 'equip'; 
                 }
             }
         };
 
-        const selectCategory = (catId) => {
-            window.location.hash = catId;
+        const selectCategory = (pageId) => {
+            const url = new URL(window.location.origin + window.location.pathname);
+            // 切換時使用簡潔的 ?pageID 格式
+            url.searchParams.set(pageId, '');
+            window.history.pushState(null, '', url.toString());
+            currentCategory.value = pageId;
+
             if (window.innerWidth <= 768) {
                 isSidebarOpen.value = false;
             }
         };
 
         const resetToHome = () => {
-            window.location.hash = 'equip';
+            const url = new URL(window.location.origin + window.location.pathname);
+            window.history.pushState(null, '', url.toString());
+            currentCategory.value = 'equip';
+
             if (window.innerWidth <= 768) {
                 isSidebarOpen.value = false;
             }
         };
 
+
+
         onMounted(() => {
             fetchData().then(() => {
                 handleRouting();
             });
-            window.addEventListener('hashchange', handleRouting);
+            // 監聽前進/後退按鈕
+            window.addEventListener('popstate', handleRouting);
         });
+
 
         return {
             loading, initError, currentCategory,

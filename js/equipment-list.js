@@ -397,7 +397,9 @@ const EquipmentListComponent = {
         const shareItem = (item) => {
             if (!item) return;
             const baseUrl = window.location.origin + window.location.pathname;
-            const shareUrl = `${baseUrl}#${props.category}?n=${item.name}`;
+            // 手動拼湊以保留中文可讀性
+            const shareUrl = `${baseUrl}?${props.category}=${item.name}`;
+
             
             Utils.copyToClipboard(shareUrl).then(() => {
                 alert('分享連結已複製到剪貼簿！');
@@ -407,18 +409,17 @@ const EquipmentListComponent = {
         };
 
         const checkUrlParams = () => {
-            const hash = window.location.hash;
-            if (hash.includes('?n=')) {
-                const params = new URLSearchParams(hash.split('?')[1]);
-                const itemName = params.get('n');
-                if (itemName) {
-                    const item = props.allItems.find(i => i.group === props.category && i.name === itemName);
-                    if (item) {
-                        selectedItem.value = item;
-                    }
+            const urlParams = new URLSearchParams(window.location.search);
+            const itemName = urlParams.get(props.category);
+            
+            if (itemName) {
+                const item = props.allItems.find(i => i.group === props.category && i.name === itemName);
+                if (item) {
+                    selectedItem.value = item;
                 }
             }
         };
+
 
         watch(selectedItem, (newVal) => {
             if (newVal) {
@@ -430,8 +431,8 @@ const EquipmentListComponent = {
 
         onMounted(() => {
             checkUrlParams();
-            window.addEventListener('hashchange', checkUrlParams);
             window.addEventListener('popstate', () => {
+
                 if (selectedItem.value) {
                     selectedItem.value = null;
                 }
@@ -440,8 +441,9 @@ const EquipmentListComponent = {
 
         const { onUnmounted } = Vue;
         onUnmounted(() => {
-            window.removeEventListener('hashchange', checkUrlParams);
+            // 已改用 popstate
         });
+
 
         // --- 過濾邏輯 ---
         const uniqueSources = computed(() => {
