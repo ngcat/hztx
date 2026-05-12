@@ -1331,7 +1331,27 @@ const SimulatorComponent = {
         });
         const combinedEffects = computed(() => getCombinedEffectsSync(selectedEquip.value).display);
 
+        const handleUrlParams = () => {
+            const params = new URLSearchParams(window.location.search);
+            const encoded = params.get('sim');
+            if (encoded) {
+                try {
+                    const config = unpackConfigV2(encoded, STABLE_POOLS.heroes, STABLE_POOLS.items, STABLE_POOLS.gods);
+                    heroState.value.selectedHeroName = config.h;
+                    heroState.value.isAwakened = (config.s & 1) !== 0;
+                    heroState.value.isReincarnated = (config.s & 2) !== 0;
+                    const newEquip = { ...selectedEquip.value };
+                    Object.entries(config.e).forEach(([k, v]) => { newEquip[k] = v; });
+                    selectedEquip.value = newEquip;
+                } catch (e) { console.error(e); }
+            }
+        };
 
+        onMounted(async () => {
+
+            await initStablePools();
+            handleUrlParams();
+        });
 
         const allSets = computed(() => {
             const setMap = {};
@@ -1410,13 +1430,46 @@ const SimulatorComponent = {
 
         const SIM_BIT_CONFIG_V2 = {
             VERSION: 4,
-            HERO_ID: 10,
+            HERO_ID: 8,
             HERO_TYPE: 2,
             HERO_FLAGS: 3,
-            ITEM_ID: 10,
+            ITEM_ID: 9,
+            GOD_ID: 7,
             EFFECT_IDX: 3,
             MASK_BITS: 16
         };
+
+        // --- 穩定索引池 (用於分享連結，避免受 AST 或 UI 排序影響) ---
+        const STABLE_POOLS = {
+            heroes: [],
+            gods: [],
+            items: [],
+            loaded: false
+        };
+
+        const initStablePools = async () => {
+            if (STABLE_POOLS.loaded) return;
+            try {
+                const [h, g, e] = await Promise.all([
+                    fetch('data/hero.json').then(r => r.json()),
+                    fetch('data/god.json').then(r => r.json()),
+                    fetch('data/equip.json').then(r => r.json())
+                ]);
+                STABLE_POOLS.heroes = h;
+                STABLE_POOLS.gods = g;
+                STABLE_POOLS.items = e;
+                STABLE_POOLS.loaded = true;
+            } catch (err) {
+                console.error("Failed to load stable pools for sharing", err);
+            }
+        };
+
+        const getStablePool = (slotId) => {
+            if (slotId === 'rear_hero' || slotId === 'front_hero') return STABLE_POOLS.heroes;
+            if (slotId === 'god') return STABLE_POOLS.gods;
+            return STABLE_POOLS.items;
+        };
+
 
 
 
@@ -1590,8 +1643,7 @@ const SimulatorComponent = {
             const mask = (fullMask === targetFullMask) ? targetFullMask : fullMask;
 
 
-            // 主將可以使用英雄或神靈
-            // 主將使用混合池 (heroes 陣列，已包含 gods)
+            // 1. 打包主將 (Hero 專屬位)
             const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
             let hType = 0;
             let cleanName = config.h || '關羽';
@@ -1599,8 +1651,6 @@ const SimulatorComponent = {
             else if (cleanName.startsWith('神·')) { hType = 2; cleanName = cleanName.replace('神·', ''); }
             const hIdx = heroes.findIndex(h => h.name === cleanName);
             writer.write(hIdx === -1 ? (1 << hBits) - 1 : hIdx, hBits);
-
-
             writer.write(hType, SIM_BIT_CONFIG_V2.HERO_TYPE);
             writer.write(config.s || 0, SIM_BIT_CONFIG_V2.HERO_FLAGS);
 
@@ -1608,7 +1658,8 @@ const SimulatorComponent = {
 
             SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
                 if (!(mask & (1 << idx))) return;
-                const pool = getSlotPool(key, items, gods, heroes);
+                const pool = getStablePool(key);
+
 
 
                 // 使用安全固定的位元寬度，防止池大小差異導致的位元偏移
@@ -1631,7 +1682,13 @@ const SimulatorComponent = {
                     const cleanName = name.replace('聖·', '').replace('神·', '');
                     id = pool.findIndex(p => p.name === cleanName);
                 }
-                writer.write(id === -1 ? (1 << bitWidth) - 1 : id, bitWidth);
+
+                // 根據插槽類型選擇精確位元寬度
+                let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 預設 9-bit
+                if (key === 'god') currentBitWidth = SIM_BIT_CONFIG_V2.GOD_ID; // 7-bit
+                else if (key === 'rear_hero' || key === 'front_hero') currentBitWidth = SIM_BIT_CONFIG_V2.HERO_ID; // 7-bit
+
+                writer.write(id === -1 ? (1 << currentBitWidth) - 1 : id, currentBitWidth);
 
 
                 if (key.endsWith('_p')) {
@@ -1657,23 +1714,25 @@ const SimulatorComponent = {
             const isFull = reader.read(1);
             const mask = isFull ? targetFullMask : reader.read(SIM_BIT_CONFIG_V2.MASK_BITS);
 
+            // 1. 解析主將 (Hero 專屬位)
             const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
             const hIdx = reader.read(hBits);
             const hType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
             const hFlags = reader.read(SIM_BIT_CONFIG_V2.HERO_FLAGS);
 
-
-
-            let hName = (hIdx < heroes.length) ? heroes[hIdx].name : '關羽';
+            // 從原始 hero.json 池還原
+            let hName = (hIdx < STABLE_POOLS.heroes.length) ? STABLE_POOLS.heroes[hIdx].name : '關羽';
             if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
             else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
             const config = { h: hName, s: hFlags, e: {} };
+
 
             SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
                 if (!(mask & (1 << idx))) return;
                 if (IS_V2_REDUNDANT(key)) return;
 
-                const pool = getSlotPool(key, items, gods, heroes);
+                const pool = getStablePool(key);
+
 
 
                 const bitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 統一使用 10-bit
@@ -1681,18 +1740,19 @@ const SimulatorComponent = {
 
                 if (key === 'front_hero' || key === 'rear_hero') {
                     const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
-                    const id = reader.read(bitWidth);
+                    const id = reader.read(SIM_BIT_CONFIG_V2.HERO_ID);
                     if (id < pool.length) {
                         let dName = pool[id].name;
                         if (dType === 1 && !dName.startsWith('聖·')) dName = '聖·' + dName;
                         else if (dType === 2 && !dName.startsWith('神·')) dName = '神·' + dName;
                         config.e[key] = dName;
                     }
+                } else if (key === 'god') {
+                    const id = reader.read(SIM_BIT_CONFIG_V2.GOD_ID);
+                    if (id < pool.length) config.e[key] = pool[id];
                 } else {
-                    const id = reader.read(bitWidth);
-                    if (key === 'god') {
-                        if (id < pool.length) config.e[key] = pool[id];
-                    } else if (key.endsWith('_p')) {
+                    const id = reader.read(SIM_BIT_CONFIG_V2.ITEM_ID);
+                    if (key.endsWith('_p')) {
                         const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
                         if (id < pool.length) config.e[key] = { item: pool[id], effectIdx: eId };
                     } else {
