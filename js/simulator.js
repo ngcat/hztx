@@ -1338,6 +1338,7 @@ const SimulatorComponent = {
                 try {
                     const config = unpackConfigV2(encoded, STABLE_POOLS.heroes, STABLE_POOLS.items, STABLE_POOLS.gods);
                     heroState.value.selectedHeroName = config.h;
+                    updateHeroAttributes(config.h);
                     heroState.value.isAwakened = (config.s & 1) !== 0;
                     heroState.value.isReincarnated = (config.s & 2) !== 0;
                     const newEquip = { ...selectedEquip.value };
