@@ -366,6 +366,12 @@ body::after {
     border-color: rgba(0, 184, 148, 0.5);
 }
 
+.tag-army {
+    background: linear-gradient(135deg, #008080, #004d4d);
+    color: #fff;
+    border-color: rgba(0, 128, 128, 0.5);
+}
+
 .loader {
     text-align: center;
     padding: 6rem 1rem;

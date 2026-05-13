@@ -6,16 +6,22 @@ const EquipmentListComponent = {
                 <div class="search-box">
                     <input type="text" v-model="searchQuery" placeholder="搜尋武將、裝備或道具名稱...">
                     <div class="select-row">
+                        <!-- 英雄分類專用：稀有度 -->
+                        <select v-if="category === 'hero'" class="merge-select" v-model="rarityFilter">
+                            <option value="ALL">稀有度</option>
+                            <option value="良才">良才</option>
+                            <option value="名將">名將</option>
+                            <option value="國士">國士</option>
+                            <option value="巾幗">巾幗</option>
+                            <option value="傳奇">傳奇</option>
+                        </select>
+
+                        <!-- 類型：一律顯示 -->
                         <select class="merge-select category-select" v-model="tagFilter">
-                            <option value="ALL">{{ category === 'scheme' ? '類型' : (category === 'god' ? '五行' : '稀有度') }}</option>
+                            <option value="ALL">類型</option>
                             <option v-for="t in uniqueTags" :key="t" :value="t">{{ t }}</option>
                         </select>
-                        <select v-if="category === 'hero'" class="merge-select" v-model="typeFilter">
-                            <option value="ALL">類型</option>
-                            <option value="武將">武將</option>
-                            <option value="文官">文官</option>
-                            <option value="全才">全才</option>
-                        </select>
+
                         <select v-if="category === 'hero'" class="merge-select" v-model="frontFilter">
                             <option value="ALL">前軍</option>
                             <option value="步兵">步兵</option>
@@ -40,7 +46,7 @@ const EquipmentListComponent = {
                             <option v-for="up in uniqueUpgrades" :key="up" :value="up">{{ up }}</option>
                         </select>
 
-                        <select v-if="category !== 'hero' && category !== 'scheme' && category !== 'god'" class="merge-select" v-model="setFilter">
+                        <select v-if="category === 'equip'" class="merge-select" v-model="setFilter">
                             <option value="ALL">完整套裝</option>
                             <option v-for="s in uniqueSets" :key="s" :value="s">{{ s }}</option>
                         </select>
@@ -51,7 +57,7 @@ const EquipmentListComponent = {
             <div class="gallery">
                 <div v-for="(item, index) in filteredItems" :key="item.name + '-' + index" 
                     :class="['card', { 'hero-card': item.group === 'hero' }]" @click="selectedItem = item">
-                    <div :class="['tag', 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
+                    <div :class="['tag', item.group === 'army' ? 'tag-army' : 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
                     <div class="release-tag" v-if="item.release !== undefined">{{ formatRelease(item.release) }}</div>
                     <div class="source-tag" v-if="item.source && (Array.isArray(item.source) ? item.source.length : item.source)">
                         <span v-for="(s, sidx) in (Array.isArray(item.source) ? item.source : [item.source])" :key="sidx">
@@ -132,7 +138,7 @@ const EquipmentListComponent = {
                                 <button class="modal-share-btn" @click="shareItem(selectedItem)" title="分享此項目"><i class="fas fa-share-alt"></i></button>
                                 <div class="hero-detail-header">
                                     <div class="hero-detail-img-container" :class="{'silhouette-bg': !selectedItem.image}">
-                                        <div :class="['tag', 'tag-' + getCardTag(selectedItem)]">{{ getCardTag(selectedItem) }}</div>
+                                        <div :class="['tag', selectedItem.group === 'army' ? 'tag-army' : 'tag-' + getCardTag(selectedItem)]">{{ getCardTag(selectedItem) }}</div>
                                         <img :src="selectedItem.image ? 'img/' + selectedItem.image : 'img/hero709770614.png'" 
                                             alt="Hero" class="hero-detail-img" :class="{'grayscale-img': !selectedItem.image}">
                                     </div>
@@ -320,6 +326,7 @@ const EquipmentListComponent = {
         const typeFilter = ref('ALL');
         const setFilter = ref('ALL');
         const tagFilter = ref('ALL');
+        const rarityFilter = ref('ALL');
         const frontFilter = ref('ALL');
         const rearFilter = ref('ALL');
         const upgradeFilter = ref('ALL');
@@ -330,6 +337,7 @@ const EquipmentListComponent = {
         watch(() => props.category, () => {
             searchQuery.value = '';
             tagFilter.value = 'ALL';
+            rarityFilter.value = 'ALL';
             mergeFilter.value = 'ALL';
             sourceFilter.value = 'ALL';
             typeFilter.value = 'ALL';
@@ -352,6 +360,7 @@ const EquipmentListComponent = {
             if (item.group === 'equip') return '裝備';
             if (item.group === 'god') return '神靈';
             if (item.group === 'scheme') return '戰計';
+            if (item.group === 'army') return '奇士';
             return '道具';
         };
 
@@ -369,7 +378,7 @@ const EquipmentListComponent = {
             const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '英雄塚'];
             let prefix = '';
             let maskStr = '';
-            
+
             for (const p of bitmaskPrefixes) {
                 if (str.startsWith(p + '_')) {
                     prefix = p;
@@ -400,7 +409,7 @@ const EquipmentListComponent = {
             // 手動拼湊以保留中文可讀性
             const shareUrl = `${baseUrl}?${props.category}=${item.name}`;
 
-            
+
             Utils.copyToClipboard(shareUrl).then(() => {
                 alert('分享連結已複製到剪貼簿！');
             }).catch(() => {
@@ -411,7 +420,7 @@ const EquipmentListComponent = {
         const checkUrlParams = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const itemName = urlParams.get(props.category);
-            
+
             if (itemName) {
                 const item = props.allItems.find(i => i.group === props.category && i.name === itemName);
                 if (item) {
@@ -532,6 +541,10 @@ const EquipmentListComponent = {
         const uniqueTags = computed(() => {
             const list = props.allItems.filter(item => item.group === props.category);
             const tagsSet = new Set();
+            if (props.category === 'hero') {
+                return ['武將', '文官', '全才'];
+            }
+
             list.forEach(item => {
                 if (item.category) {
                     item.category.split(' ').forEach(c => {
@@ -539,33 +552,8 @@ const EquipmentListComponent = {
                         if (trimmed) tagsSet.add(trimmed);
                     });
                 }
-                if (item.tags && Array.isArray(item.tags)) {
-                    item.tags.forEach(t => {
-                        const trimmed = t.trim();
-                        if (trimmed) tagsSet.add(trimmed);
-                    });
-                }
             });
-            const tagOrder = [
-                '良才', '名將', '巾幗', '國士', '傳奇',
-                '金', '木', '水', '火', '土',
-                '武將', '文官', '全才',
-                '步兵', '騎兵', '弓兵', '方士'
-            ];
-            return [...tagsSet]
-                .filter(t => {
-                    const trimmed = t.trim();
-                    const excludeList = ['前軍', '後軍', '全軍', '步兵', '騎兵', '弓兵', '方士', '武將', '文官', '全才'];
-                    return !excludeList.includes(trimmed);
-                })
-                .sort((a, b) => {
-                    const idxA = tagOrder.indexOf(a);
-                    const idxB = tagOrder.indexOf(b);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    if (idxA !== -1) return -1;
-                    if (idxB !== -1) return 1;
-                    return a.localeCompare(b, 'zh-TW');
-                });
+            return [...tagsSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
         });
 
         const uniqueReleases = computed(() => {
@@ -620,12 +608,18 @@ const EquipmentListComponent = {
                     return upgrades.includes(upgradeFilter.value);
                 });
             }
+            if (rarityFilter.value !== 'ALL') {
+                const filterVal = rarityFilter.value;
+                list = list.filter(item => {
+                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
+                    return cats.includes(filterVal);
+                });
+            }
             if (tagFilter.value !== 'ALL') {
                 const filterVal = tagFilter.value.trim();
                 list = list.filter(item => {
                     const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    const tags = item.tags ? item.tags.map(t => t.trim()) : [];
-                    return cats.includes(filterVal) || tags.includes(filterVal);
+                    return cats.includes(filterVal);
                 });
             }
             if (typeFilter.value !== 'ALL') {
@@ -697,7 +691,7 @@ const EquipmentListComponent = {
         });
 
         return {
-            searchQuery, mergeFilter, sourceFilter, typeFilter, setFilter, tagFilter, 
+            searchQuery, mergeFilter, sourceFilter, typeFilter, setFilter, tagFilter, rarityFilter,
             frontFilter, rearFilter, upgradeFilter, selectedItem,
             uniqueSources, uniqueSets, uniqueTags, uniqueUpgrades, uniqueReleases, filteredItems,
             getCardTag, formatRelease, formatBitmask, selectedItem, activityTable,

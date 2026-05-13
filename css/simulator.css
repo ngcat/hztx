@@ -761,6 +761,35 @@
     background: rgba(212, 175, 55, 0.1);
 }
 
+/* 奇士搜尋樣式 */
+.army-mini-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    margin-right: 10px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.army-selector-group {
+    margin-left: 10px;
+}
+
+.army-tiny-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    background: rgba(0,0,0,0.3);
+    border-radius: 2px;
+}
+
+.control-group label i {
+    margin-right: 5px;
+    color: var(--primary-gold);
+    opacity: 0.8;
+}
+
 
 
 /* 插槽容器定位 */
