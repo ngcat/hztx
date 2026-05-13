@@ -4,8 +4,13 @@
 const SimulatorComponent = {
     props: ['allItems'],
     setup(props) {
-        const { ref, computed, watch, onMounted, onUnmounted, toRef, nextTick } = Vue;
+        const { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, toRef, nextTick } = Vue;
         const allItems = toRef(props, 'allItems');
+        
+        // 用於控制 keep-alive 狀態下的全域 UI 顯示 (例如 Teleport 到的 body 的按鈕)
+        const isCompActive = ref(true);
+        onActivated(() => { isCompActive.value = true; });
+        onDeactivated(() => { isCompActive.value = false; });
 
         // --- 核心運算邏輯 (無狀態同步版) ---
         const getEquippedItemsSync = (equipConfig) => {
@@ -2118,7 +2123,8 @@ const SimulatorComponent = {
                 } catch (e) { alert('分享失敗，請稍後再試。'); }
             },
             activeSummaryTab,
-            formatStatValue
+            formatStatValue,
+            isCompActive
         };
     },
 
@@ -2364,7 +2370,7 @@ const SimulatorComponent = {
             </div>
 
             <!-- 使用 Teleport 將按鈕傳送到 body 下，防止被父容器的 transform 干擾 fixed 定位 -->
-            <teleport to="body">
+            <teleport to="body" v-if="isCompActive">
                 <button class="mobile-summary-toggle" :class="{ 'is-open': isSummaryOpen }" @click="isSummaryOpen = !isSummaryOpen">
 
                     <i :class="isSummaryOpen ? 'fas fa-times' : 'fas fa-chart-bar'"></i>
@@ -2375,9 +2381,9 @@ const SimulatorComponent = {
 
 
 
-            <div class="summary-overlay" :class="{ 'show': isSummaryOpen }" @click="isSummaryOpen = false"></div>
+            <div v-if="isCompActive" class="summary-overlay" :class="{ 'show': isSummaryOpen }" @click="isSummaryOpen = false"></div>
 
-            <div class="simulator-summary" :class="{ 'mobile-open': isSummaryOpen }">
+            <div v-if="isCompActive" class="simulator-summary" :class="{ 'mobile-open': isSummaryOpen }">
                 <div class="summary-header">
                     <span class="header-tag">屬性彙總</span>
                 </div>
