@@ -1519,11 +1519,8 @@ const SimulatorComponent = {
         const SIM_BIT_SLOT_ORDER = [
             'weapon', 'mount', 'book', 'treasure', 'token', 'hunyu',
             'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p',
-            'rear_p', 'front_p', 'rear_hero', 'front_hero', 'god'
+            'rear_hero', 'front_hero', 'god'
         ];
-
-        // V2 (最新優化版) 專用的有效插槽過濾
-        const IS_V2_REDUNDANT = (slotId) => (slotId === 'rear_p' || slotId === 'front_p');
 
         const getSlotPool = (slotId, items, gods, heroes) => {
             if (slotId === 'rear_hero' || slotId === 'front_hero') {
@@ -1555,7 +1552,6 @@ const SimulatorComponent = {
             SIM_BIT_SLOT_ORDER.forEach((key) => {
                 const pool = getStablePool(key);
                 const val = config.e[key];
-                if (IS_V2_REDUNDANT(key)) return;
 
                 let name = typeof val === 'string' ? val : (val?.name || val?.n || (val?.item ? (val.item.name || val.item.n) : ''));
 
@@ -1614,7 +1610,6 @@ const SimulatorComponent = {
 
             // 2. 按固定順序讀取所有插槽
             SIM_BIT_SLOT_ORDER.forEach((key) => {
-                if (IS_V2_REDUNDANT(key)) return;
                 const pool = getStablePool(key);
 
                 if (key === 'front_hero' || key === 'rear_hero') {
