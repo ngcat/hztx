@@ -584,19 +584,22 @@ const SimulatorComponent = {
         const updateHeroAttributes = (name) => {
             const hero = allHeroes.value.find(h => h.name === name);
             if (!hero) return;
-            const ast = getHeroAst(name);
-            const slots = ast ? (ast.slot || []) : [];
 
-            heroState.value.fullCategory = slots.join(' '); // 保持相容性但來源改為 AST
+            // 主將屬性一律優先抓取 hero.json 的原始資料
+            const categoryTags = (hero.category || '').split(' ').filter(t => t.trim());
+            const slots = [...categoryTags, hero.gender];
+            
+            heroState.value.fullCategory = slots.join(' ');
 
-            // 從 AST slot 中提取分類
+            // 從標籤中提取分類
             if (slots.includes('武將')) heroState.value.class = '武將';
             else if (slots.includes('文官')) heroState.value.class = '文官';
             else if (slots.includes('全才')) heroState.value.class = '全才';
+            else heroState.value.class = '無';
 
             const traits = ['傳奇', '國士', '巾幗', '名將', '良才'];
             heroState.value.identity = traits.find(t => slots.includes(t)) || '無';
-            heroState.value.gender = slots.includes('女性') ? '女性' : '男性';
+            heroState.value.gender = hero.gender || '男性';
         };
 
         // 輔助函式：判斷身份是否匹配 (嚴格匹配 AST slots)
@@ -749,11 +752,10 @@ const SimulatorComponent = {
                 if (heroState.value.isAwakened) context.mainTraits.add('已覺醒');
                 if (heroState.value.isReincarnated) context.mainTraits.add('已輪迴');
 
-                const baseMain = mainName.replace(/^[神聖][·\.\s]/, '');
-                const mainAst = astData.value[baseMain] || astData.value[mainName];
-                if (mainAst && mainAst.slot) {
-                    mainAst.slot.forEach(s => context.mainTraits.add(s));
-                }
+                // 主將 Traits 直接使用 heroState (來自 hero.json) 的完整類別標籤
+                const tags = (heroState.value.fullCategory || '').split(' ').filter(t => t.trim());
+                tags.forEach(t => context.mainTraits.add(t));
+                if (heroState.value.class) context.mainTraits.add(heroState.value.class);
             }
 
             ['rear_hero', 'front_hero'].forEach(slotId => {
