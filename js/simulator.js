@@ -1549,6 +1549,7 @@ const SimulatorComponent = {
             writer.write(hIdx === -1 ? (1 << hBits) - 1 : hIdx, hBits);
             writer.write(hType, SIM_BIT_CONFIG_V2.HERO_TYPE);
             writer.write(config.s || 0, SIM_BIT_CONFIG_V2.HERO_FLAGS);
+            writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX); // 預留空間
 
             // 2. 按固定順序完整寫入所有插槽
             SIM_BIT_SLOT_ORDER.forEach((key) => {
@@ -1582,7 +1583,11 @@ const SimulatorComponent = {
                 writer.write(id === -1 ? (1 << currentBitWidth) - 1 : id, currentBitWidth);
 
                 if (key.endsWith('_p')) {
+                    // _p 結尾寫入實際詞條索引
                     writer.write(val?.i !== undefined ? val.i : (val?.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                } else if (key !== 'god') {
+                    // 其他非神靈位填入預設值 4
+                    writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX);
                 }
             });
 
@@ -1599,6 +1604,7 @@ const SimulatorComponent = {
             const hIdx = reader.read(hBits);
             const hType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
             const hFlags = reader.read(SIM_BIT_CONFIG_V2.HERO_FLAGS);
+            reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX); // 跳過預留位元
 
             // 從原始 hero.json 池還原
             let hName = (hIdx < STABLE_POOLS.heroes.length) ? STABLE_POOLS.heroes[hIdx].name : '關羽';
@@ -1614,6 +1620,7 @@ const SimulatorComponent = {
                 if (key === 'front_hero' || key === 'rear_hero') {
                     const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
                     const id = reader.read(SIM_BIT_CONFIG_V2.HERO_ID);
+                    reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX); // 跳過
                     if (id !== (1 << SIM_BIT_CONFIG_V2.HERO_ID) - 1 && id < pool.length) {
                         let dName = pool[id].name;
                         if (dType === 1 && !dName.startsWith('聖·')) dName = '聖·' + dName;
@@ -1625,16 +1632,15 @@ const SimulatorComponent = {
                     if (id !== (1 << SIM_BIT_CONFIG_V2.GOD_ID) - 1 && id < pool.length) config.e[key] = pool[id];
                 } else {
                     const id = reader.read(SIM_BIT_CONFIG_V2.ITEM_ID);
+                    const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
+
                     if (id !== (1 << SIM_BIT_CONFIG_V2.ITEM_ID) - 1 && id < pool.length) {
                         if (key.endsWith('_p')) {
-                            const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                            // _p 結尾恢復賦值
                             config.e[key] = { item: pool[id], effectIdx: eId };
                         } else {
                             config.e[key] = pool[id];
                         }
-                    } else if (key.endsWith('_p')) {
-                        // 即使 ID 是空的，也要讀取完對應的詞條位元以保持位元偏移正確
-                        reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
                     }
                 }
             });
