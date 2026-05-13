@@ -73,7 +73,6 @@ const SimulatorComponent = {
                     if (!hasIdentityMatch(wearerTraits, cond.identity)) isActive = false;
                 }
 
-
                 if (isActive && cond.unit && cond.unit.length > 0) {
                     // 兵種判定永遠只看穿戴者/發動者本人
                     if (!cond.unit.some(u => wearerTraits.has(u))) isActive = false;
@@ -176,7 +175,6 @@ const SimulatorComponent = {
                     if (found.length > 0) astEntries = found;
                 }
 
-
                 // --- 2. 執行 AST 解析 ---
                 if (astEntries) {
                     const hCat = heroState.value.fullCategory || '';
@@ -265,7 +263,6 @@ const SimulatorComponent = {
                             });
                         }
 
-
                         const finalActive = condActive && (hasAnyStats ? hasApplicableStats : true);
 
                         results.words.push({
@@ -289,7 +286,6 @@ const SimulatorComponent = {
             });
             return results;
         };
-
 
         // 輔助函式：統一獲取英雄 AST 資料 (處理神/聖前綴與空格)
         const getHeroAst = (name) => {
@@ -357,7 +353,6 @@ const SimulatorComponent = {
                     }
                 }
             });
-
 
             return result;
         };
@@ -490,7 +485,6 @@ const SimulatorComponent = {
             return totals;
         };
 
-
         // --- 狀態定義 ---
         const activeSlot = ref(null);
         const slotSearchQuery = ref('');
@@ -553,7 +547,6 @@ const SimulatorComponent = {
             console.error('AST 資料載入失敗', err);
         });
 
-
         const selectHero = (name) => {
             if (activeHeroSlot.value === 'rear_hero' || activeHeroSlot.value === 'front_hero') {
                 selectedEquip.value[activeHeroSlot.value] = name;
@@ -608,8 +601,6 @@ const SimulatorComponent = {
             const slotSet = Array.isArray(slots) ? new Set(slots) : slots;
             return requiredIds.some(targetId => slotSet.has(targetId));
         };
-
-
 
         // 當主將變更時，自動檢查並清空不符合條件的副將
         watch(() => heroState.value.selectedHeroName, (newHeroName) => {
@@ -689,7 +680,6 @@ const SimulatorComponent = {
             return { front, rear };
         });
 
-
         const isHeroValidForLieutenant = (hero, slot) => {
             if (!hero) return true;
             const mainHeroName = heroState.value.selectedHeroName;
@@ -729,7 +719,6 @@ const SimulatorComponent = {
             const allowedTypes = slot === 'front_hero' ? reqs.front : reqs.rear;
             return allowedTypes.some(r => hCat.includes(r));
         };
-
 
         const getCurrentContext = (equipConfig = selectedEquip.value) => {
             const context = {
@@ -847,9 +836,6 @@ const SimulatorComponent = {
                     const matchesAnyFate = hasIdentityMatch(slots, Array.from(fateCategories));
                     const isValidType = isHeroValidForLieutenant(h, activeHeroSlot.value);
 
-
-
-
                     // 具備副將資格判定：有副將技資料 OR 是宿命對象
                     const hasDeputyData = ast && (
                         (ast.as_deputy && ast.as_deputy.length > 0) ||
@@ -863,7 +849,6 @@ const SimulatorComponent = {
                     if (isFate || (isValidType && (matchesAnyFate || (ast && ast.as_deputy && ast.as_deputy.length > 0)))) {
                         finalHeroList.push(h);
                     }
-
 
                     // B. 「神·」版本：AST中有覺醒副將技 (需符合軍種)
                     if (isValidType && ast.as_deputy_awaken && ast.as_deputy_awaken.length > 0) {
@@ -1067,7 +1052,6 @@ const SimulatorComponent = {
                 if (el) el.scrollTop = 0;
             });
         });
-
 
         const formatStatValue = (stat, val) => {
             if (val === null) return '';
@@ -1287,7 +1271,6 @@ const SimulatorComponent = {
             };
         };
 
-
         const selectItemForSlot = (slotId, item, effectIdx = -1) => {
             if (slotId.endsWith('_p')) {
                 // 如果已經指定了詞條索引 (來自自動優化或二階選單)
@@ -1322,7 +1305,6 @@ const SimulatorComponent = {
             popoverView.value = 'items';
             pendingItem.value = null;
         };
-
 
         const handleSearchBlur = () => {
             // 移除自動關閉，改由 window mousedown 處理點擊外部關閉
@@ -1386,8 +1368,6 @@ const SimulatorComponent = {
             (allItems.value || []).forEach(item => { if (item.sets) item.sets.split(/\s+/).forEach(s => { if (s.trim()) setMap[s.trim()] = true; }); });
             return Object.keys(setMap).sort((a, b) => a.localeCompare(b, 'zh-TW'));
         });
-
-
 
         const applySet = (setName) => {
             const standardSlots = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu'];
@@ -1498,12 +1478,6 @@ const SimulatorComponent = {
             return STABLE_POOLS.items;
         };
 
-
-
-
-
-
-
         const Base62 = {
             chars: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
             encode(num) {
@@ -1571,11 +1545,6 @@ const SimulatorComponent = {
             }
             return items;
         };
-
-
-
-
-
 
         const packConfigV1 = (config, heroes, items, gods) => {
             const writer = new BitWriter();
@@ -1650,8 +1619,6 @@ const SimulatorComponent = {
         const packConfigV2 = (config, heroes, items, gods) => {
             const writer = new BitWriter();
 
-
-
             writer.write(2, SIM_BIT_CONFIG_V2.VERSION); // Version 2
 
             const fullMask = SIM_BIT_SLOT_ORDER.reduce((m, key, idx) => {
@@ -1670,7 +1637,6 @@ const SimulatorComponent = {
             }
             const mask = (fullMask === targetFullMask) ? targetFullMask : fullMask;
 
-
             // 1. 打包主將 (Hero 專屬位)
             const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
             let hType = 0;
@@ -1682,13 +1648,9 @@ const SimulatorComponent = {
             writer.write(hType, SIM_BIT_CONFIG_V2.HERO_TYPE);
             writer.write(config.s || 0, SIM_BIT_CONFIG_V2.HERO_FLAGS);
 
-
-
             SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
                 if (!(mask & (1 << idx))) return;
                 const pool = getStablePool(key);
-
-
 
                 // 使用安全固定的位元寬度，防止池大小差異導致的位元偏移
                 const bitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 統一使用 10-bit
@@ -1718,19 +1680,16 @@ const SimulatorComponent = {
 
                 writer.write(id === -1 ? (1 << currentBitWidth) - 1 : id, currentBitWidth);
 
-
                 if (key.endsWith('_p')) {
                     writer.write(val.i !== undefined ? val.i : (val.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
                 }
             });
-
 
             return writer.toString();
         };
 
         const unpackConfigV2 = (str, heroes, items, gods) => {
             const reader = new BitReader(str);
-
 
             const version = reader.read(SIM_BIT_CONFIG_V2.VERSION);
             if (version !== 2) throw new Error("Not V2");
@@ -1754,17 +1713,13 @@ const SimulatorComponent = {
             else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
             const config = { h: hName, s: hFlags, e: {} };
 
-
             SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
                 if (!(mask & (1 << idx))) return;
                 if (IS_V2_REDUNDANT(key)) return;
 
                 const pool = getStablePool(key);
 
-
-
                 const bitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 統一使用 10-bit
-
 
                 if (key === 'front_hero' || key === 'rear_hero') {
                     const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
@@ -1788,12 +1743,10 @@ const SimulatorComponent = {
                     }
                 }
 
-
             });
 
             return config;
         };
-
 
         const handleClickOutside = (e) => {
             if (activeSlot.value) {
@@ -1963,7 +1916,6 @@ const SimulatorComponent = {
             return config;
         };
 
-
         const loadConfig = (config) => {
             if (!config) return;
 
@@ -1987,7 +1939,6 @@ const SimulatorComponent = {
                 });
             }
         };
-
 
         // 監聽裝備變化，用於導航提醒
         watch(selectedEquip, (newVal) => {
@@ -2378,10 +2329,6 @@ const SimulatorComponent = {
                     <i :class="isSummaryOpen ? 'fas fa-times' : 'fas fa-chart-bar'"></i>
                 </button>
             </teleport>
-
-
-
-
 
             <div v-if="isCompActive" class="summary-overlay" :class="{ 'show': isSummaryOpen }" @click="isSummaryOpen = false"></div>
 
