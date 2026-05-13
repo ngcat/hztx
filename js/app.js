@@ -90,19 +90,16 @@ createApp({
 
         // --- 路由功能 (動態參數化) ---
         const handleRouting = () => {
+            // 特殊處理舊版 #sim?c= 連結，直接轉換為 ?c=
+            if (window.location.hash.startsWith('#sim?c=')) {
+                const cValue = new URLSearchParams(window.location.hash.split('?')[1]).get('c');
+                window.location.href = window.location.pathname + '?c=' + cValue;
+                return;
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const hash = window.location.hash.slice(1);
             
-            // 1. 自動轉換舊的 Hash 路由到 GET 參數
-            if (hash) {
-                const targetPage = hash.split('?')[0];
-                const newParams = new URLSearchParams(window.location.search);
-                newParams.set('page', targetPage);
-                window.history.replaceState(null, '', `${window.location.pathname}?${newParams.toString()}`);
-                window.location.hash = '';
-                return handleRouting(); // 重新跑一次解析
-            }
-
             // 2. 優先尋找「分類即 Key」的參數 (例如 ?hero=XXX, ?sim=XXX)
             let detectedPage = null;
             let detectedQuery = null;
@@ -122,8 +119,7 @@ createApp({
                 }
             }
 
-            // 3. 回退到顯性 ?page= 參數
-            const pageParam = detectedPage || urlParams.get('page');
+            const pageParam = detectedPage;
             const hasConfig = urlParams.has('c');
             
             if (pageParam === 'sim' || (!pageParam && hasConfig)) {

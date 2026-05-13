@@ -1333,6 +1333,8 @@ const SimulatorComponent = {
 
         const handleUrlParams = () => {
             const params = new URLSearchParams(window.location.search);
+            
+            // 1. 處理新版 ?sim= (V2)
             const encoded = params.get('sim');
             if (encoded) {
                 try {
@@ -1344,7 +1346,25 @@ const SimulatorComponent = {
                     const newEquip = { ...selectedEquip.value };
                     Object.entries(config.e).forEach(([k, v]) => { newEquip[k] = v; });
                     selectedEquip.value = newEquip;
-                } catch (e) { console.error(e); }
+                } catch (e) { console.error("V2 Unpack failed", e); }
+                return;
+            }
+
+            // 2. 處理舊版 ?c= (V0)
+            const legacyEncoded = params.get('c');
+            if (legacyEncoded) {
+                try {
+                    const config = decompress(legacyEncoded, STABLE_POOLS.heroes, STABLE_POOLS.items, STABLE_POOLS.gods);
+                    if (config && config.h) {
+                        heroState.value.selectedHeroName = config.h;
+                        updateHeroAttributes(config.h);
+                        heroState.value.isAwakened = (config.s & 1) !== 0;
+                        heroState.value.isReincarnated = (config.s & 2) !== 0;
+                        const newEquip = { ...selectedEquip.value };
+                        Object.entries(config.e).forEach(([k, v]) => { newEquip[k] = v; });
+                        selectedEquip.value = newEquip;
+                    }
+                } catch (e) { console.error("Legacy V0 Unpack failed", e); }
             }
         };
 
