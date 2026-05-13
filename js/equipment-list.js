@@ -36,7 +36,7 @@ const EquipmentListComponent = {
                             <option value="ALL">開放時機</option>
                             <option v-for="r in uniqueReleases" :key="r" :value="r">{{ formatRelease(r) }}</option>
                         </select>
-                        <select v-if="category !== 'scheme'" class="merge-select" v-model="sourceFilter">
+                        <select v-if="category !== 'scheme' && category !== 'puppet'" class="merge-select" v-model="sourceFilter">
                             <option value="ALL">取得來源</option>
                             <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
                         </select>
@@ -361,6 +361,7 @@ const EquipmentListComponent = {
             if (item.group === 'god') return '神靈';
             if (item.group === 'scheme') return '戰計';
             if (item.group === 'army') return '奇士';
+            if (item.group === 'puppet') return '傀儡';
             return '道具';
         };
 

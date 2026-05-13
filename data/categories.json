@@ -3,5 +3,6 @@
     { "id": "hero", "name": "🎖️ 英雄" },
     { "id": "army", "name": "🏹 奇士" },
     { "id": "scheme", "name": "📜 戰計" },
-    { "id": "god", "name": "✨ 神靈" }
+    { "id": "god", "name": "✨ 神靈" },
+    { "id": "puppet", "name": "⚙️ 傀儡" }
 ]
