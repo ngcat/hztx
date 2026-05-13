@@ -6,7 +6,7 @@ const SimulatorComponent = {
     setup(props) {
         const { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, toRef, nextTick } = Vue;
         const allItems = toRef(props, 'allItems');
-        
+
         // 用於控制 keep-alive 狀態下的全域 UI 顯示 (例如 Teleport 到的 body 的按鈕)
         const isCompActive = ref(true);
         onActivated(() => { isCompActive.value = true; });
@@ -581,7 +581,7 @@ const SimulatorComponent = {
             // 主將屬性一律優先抓取 hero.json 的原始資料
             const categoryTags = (hero.category || '').split(' ').filter(t => t.trim());
             const slots = [...categoryTags, hero.gender];
-            
+
             heroState.value.fullCategory = slots.join(' ');
 
             // 從標籤中提取分類
@@ -1322,7 +1322,7 @@ const SimulatorComponent = {
 
         const handleUrlParams = () => {
             const params = new URLSearchParams(window.location.search);
-            
+
             // 1. 處理新版 ?sim= (V2)
             const encoded = params.get('sim');
             if (encoded) {
@@ -1426,16 +1426,6 @@ const SimulatorComponent = {
         };
 
         // --- 全新位元流分享系統 (Base62 + Bitstream) ---
-
-        const SIM_BIT_CONFIG_V1 = {
-            VERSION: 6,
-            HERO_ID: 10,
-            HERO_TYPE: 2,
-            HERO_FLAGS: 3,
-            ITEM_ID: 10,
-            EFFECT_IDX: 3
-        };
-
         const SIM_BIT_CONFIG_V2 = {
             VERSION: 4,
             HERO_ID: 8,
@@ -1544,76 +1534,6 @@ const SimulatorComponent = {
                 return gods;
             }
             return items;
-        };
-
-        const packConfigV1 = (config, heroes, items, gods) => {
-            const writer = new BitWriter();
-            writer.write(1, SIM_BIT_CONFIG_V1.VERSION); // Version 1
-            let hType = 0;
-            let cleanName = config.h || '';
-            if (cleanName.startsWith('聖·')) { hType = 1; cleanName = cleanName.replace('聖·', ''); }
-            else if (cleanName.startsWith('神·')) { hType = 2; cleanName = cleanName.replace('神·', ''); }
-            const pool = hType === 2 ? gods : heroes.filter(h => (hType === 1) ? h.name.startsWith('聖·') : !h.name.startsWith('聖·'));
-            const hIdx = pool.findIndex(h => (hType === 2 ? h.name : h.name.replace('聖·', '')) === cleanName);
-            writer.write(hIdx === -1 ? 1023 : hIdx, SIM_BIT_CONFIG_V1.HERO_ID);
-            writer.write(hType, SIM_BIT_CONFIG_V1.HERO_TYPE);
-            writer.write(config.s || 0, SIM_BIT_CONFIG_V1.HERO_FLAGS);
-            SIM_BIT_SLOT_ORDER.forEach(key => {
-                const val = config.e[key];
-                if (!val) {
-                    writer.write(1023, SIM_BIT_CONFIG_V1.ITEM_ID);
-                    if (key.endsWith('_p')) writer.write(7, SIM_BIT_CONFIG_V1.EFFECT_IDX);
-                    return;
-                }
-                if (key === 'front_hero' || key === 'rear_hero') {
-                    const id = heroes.findIndex(h => h.name === val);
-                    writer.write(id === -1 ? 1023 : id, SIM_BIT_CONFIG_V1.ITEM_ID);
-                } else if (key === 'god') {
-                    const name = typeof val === 'string' ? val : (val.name || val.item?.name);
-                    const id = gods.findIndex(g => g.name === name);
-                    writer.write(id === -1 ? 1023 : id, SIM_BIT_CONFIG_V1.ITEM_ID);
-                } else if (key.endsWith('_p')) {
-                    const id = items.findIndex(i => i.name === val.n);
-                    writer.write(id === -1 ? 1023 : id, SIM_BIT_CONFIG_V1.ITEM_ID);
-                    writer.write(val.i === undefined ? 7 : val.i, SIM_BIT_CONFIG_V1.EFFECT_IDX);
-                } else {
-                    const name = typeof val === 'string' ? val : (val.name || val.item?.name);
-                    const id = items.findIndex(i => i.name === name);
-                    writer.write(id === -1 ? 1023 : id, SIM_BIT_CONFIG_V1.ITEM_ID);
-                }
-            });
-            return writer.toString();
-        };
-
-        const unpackConfigV1 = (str, heroes, items, gods) => {
-            const reader = new BitReader(str);
-            const version = reader.read(SIM_BIT_CONFIG_V1.VERSION);
-            if (version !== 1) throw new Error("Not V1");
-            const hIdx = reader.read(SIM_BIT_CONFIG_V1.HERO_ID);
-            const hType = reader.read(SIM_BIT_CONFIG_V1.HERO_TYPE);
-            const hFlags = reader.read(SIM_BIT_CONFIG_V1.HERO_FLAGS);
-            const pool = hType === 2 ? gods : heroes.filter(h => (hType === 1) ? h.name.startsWith('聖·') : !h.name.startsWith('聖·'));
-            let hName = (hIdx < pool.length) ? pool[hIdx].name : '關羽';
-            if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
-            const config = { h: hName, s: hFlags, e: {} };
-            SIM_BIT_SLOT_ORDER.forEach(key => {
-                const itemIdx = reader.read(SIM_BIT_CONFIG_V1.ITEM_ID);
-                if (key.endsWith('_p')) {
-                    const effIdx = reader.read(SIM_BIT_CONFIG_V1.EFFECT_IDX);
-                    if (itemIdx < items.length) {
-                        const item = items[itemIdx];
-                        if (item) config.e[key] = { item, effectIdx: effIdx - 1 };
-                    }
-                } else {
-                    if (itemIdx === 1023) return;
-                    if (key === 'front_hero' || key === 'rear_hero') {
-                        if (itemIdx < heroes.length) config.e[key] = heroes[itemIdx].name;
-                    } else {
-                        if (itemIdx < items.length) config.e[key] = items[itemIdx];
-                    }
-                }
-            });
-            return config;
         };
 
         const packConfigV2 = (config, heroes, items, gods) => {
@@ -1974,14 +1894,6 @@ const SimulatorComponent = {
                                         unwatch();
                                         return;
                                     } catch (e2) { }
-
-                                    // 嘗試 V1
-                                    try {
-                                        const configV1 = unpackConfigV1(target, heroes, items, gods);
-                                        loadConfig(configV1);
-                                        unwatch();
-                                        return;
-                                    } catch (e1) { }
 
                                     const config = decompress(target, heroes, items, gods);
                                     if (config) loadConfig(config);
