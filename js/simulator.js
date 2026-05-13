@@ -1433,8 +1433,7 @@ const SimulatorComponent = {
             HERO_FLAGS: 3,
             ITEM_ID: 9,
             GOD_ID: 7,
-            EFFECT_IDX: 3,
-            MASK_BITS: 16
+            EFFECT_IDX: 3
         };
 
         // --- 穩定索引池 (用於分享連結，避免受 AST 或 UI 排序影響) ---
@@ -1538,24 +1537,7 @@ const SimulatorComponent = {
 
         const packConfigV2 = (config, heroes, items, gods) => {
             const writer = new BitWriter();
-
             writer.write(2, SIM_BIT_CONFIG_V2.VERSION); // Version 2
-
-            const fullMask = SIM_BIT_SLOT_ORDER.reduce((m, key, idx) => {
-                return (config.e[key] && !IS_V2_REDUNDANT(key)) ? (m | (1 << idx)) : m;
-            }, 0);
-
-            const targetFullMask = SIM_BIT_SLOT_ORDER.reduce((m, key, idx) => {
-                return !IS_V2_REDUNDANT(key) ? (m | (1 << idx)) : m;
-            }, 0);
-
-            if (fullMask === targetFullMask) {
-                writer.write(1, 1);
-            } else {
-                writer.write(0, 1);
-                writer.write(fullMask, SIM_BIT_CONFIG_V2.MASK_BITS);
-            }
-            const mask = (fullMask === targetFullMask) ? targetFullMask : fullMask;
 
             // 1. 打包主將 (Hero 專屬位)
             const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
@@ -1568,17 +1550,13 @@ const SimulatorComponent = {
             writer.write(hType, SIM_BIT_CONFIG_V2.HERO_TYPE);
             writer.write(config.s || 0, SIM_BIT_CONFIG_V2.HERO_FLAGS);
 
-            SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
-                if (!(mask & (1 << idx))) return;
+            // 2. 按固定順序完整寫入所有插槽
+            SIM_BIT_SLOT_ORDER.forEach((key) => {
                 const pool = getStablePool(key);
-
-                // 使用安全固定的位元寬度，防止池大小差異導致的位元偏移
-                const bitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 統一使用 10-bit
                 const val = config.e[key];
-
                 if (IS_V2_REDUNDANT(key)) return;
 
-                let name = typeof val === 'string' ? val : (val.name || val.n || (val.item ? (val.item.name || val.item.n) : ''));
+                let name = typeof val === 'string' ? val : (val?.name || val?.n || (val?.item ? (val.item.name || val.item.n) : ''));
 
                 if (key === 'rear_hero' || key === 'front_hero') {
                     let dType = 0;
@@ -1587,21 +1565,24 @@ const SimulatorComponent = {
                     writer.write(dType, SIM_BIT_CONFIG_V2.HERO_TYPE);
                 }
 
-                let id = pool.findIndex(p => p.name === name);
-                if (id === -1 && name) {
-                    const cleanName = name.replace('聖·', '').replace('神·', '');
-                    id = pool.findIndex(p => p.name === cleanName);
+                let id = -1;
+                if (name) {
+                    id = pool.findIndex(p => p.name === name);
+                    if (id === -1) {
+                        const clean = name.replace('聖·', '').replace('神·', '');
+                        id = pool.findIndex(p => p.name === clean);
+                    }
                 }
 
-                // 根據插槽類型選擇精確位元寬度
-                let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 預設 9-bit
-                if (key === 'god') currentBitWidth = SIM_BIT_CONFIG_V2.GOD_ID; // 7-bit
-                else if (key === 'rear_hero' || key === 'front_hero') currentBitWidth = SIM_BIT_CONFIG_V2.HERO_ID; // 7-bit
+                // 根據插槽類型選擇位元寬度
+                let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; 
+                if (key === 'god') currentBitWidth = SIM_BIT_CONFIG_V2.GOD_ID;
+                else if (key === 'rear_hero' || key === 'front_hero') currentBitWidth = SIM_BIT_CONFIG_V2.HERO_ID;
 
                 writer.write(id === -1 ? (1 << currentBitWidth) - 1 : id, currentBitWidth);
 
                 if (key.endsWith('_p')) {
-                    writer.write(val.i !== undefined ? val.i : (val.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                    writer.write(val?.i !== undefined ? val.i : (val?.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
                 }
             });
 
@@ -1610,16 +1591,8 @@ const SimulatorComponent = {
 
         const unpackConfigV2 = (str, heroes, items, gods) => {
             const reader = new BitReader(str);
-
             const version = reader.read(SIM_BIT_CONFIG_V2.VERSION);
             if (version !== 2) throw new Error("Not V2");
-
-            const targetFullMask = SIM_BIT_SLOT_ORDER.reduce((m, key, idx) => {
-                return !IS_V2_REDUNDANT(key) ? (m | (1 << idx)) : m;
-            }, 0);
-
-            const isFull = reader.read(1);
-            const mask = isFull ? targetFullMask : reader.read(SIM_BIT_CONFIG_V2.MASK_BITS);
 
             // 1. 解析主將 (Hero 專屬位)
             const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
@@ -1633,18 +1606,15 @@ const SimulatorComponent = {
             else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
             const config = { h: hName, s: hFlags, e: {} };
 
-            SIM_BIT_SLOT_ORDER.forEach((key, idx) => {
-                if (!(mask & (1 << idx))) return;
+            // 2. 按固定順序讀取所有插槽
+            SIM_BIT_SLOT_ORDER.forEach((key) => {
                 if (IS_V2_REDUNDANT(key)) return;
-
                 const pool = getStablePool(key);
-
-                const bitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; // 統一使用 10-bit
 
                 if (key === 'front_hero' || key === 'rear_hero') {
                     const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
                     const id = reader.read(SIM_BIT_CONFIG_V2.HERO_ID);
-                    if (id < pool.length) {
+                    if (id !== (1 << SIM_BIT_CONFIG_V2.HERO_ID) - 1 && id < pool.length) {
                         let dName = pool[id].name;
                         if (dType === 1 && !dName.startsWith('聖·')) dName = '聖·' + dName;
                         else if (dType === 2 && !dName.startsWith('神·')) dName = '神·' + dName;
@@ -1652,17 +1622,21 @@ const SimulatorComponent = {
                     }
                 } else if (key === 'god') {
                     const id = reader.read(SIM_BIT_CONFIG_V2.GOD_ID);
-                    if (id < pool.length) config.e[key] = pool[id];
+                    if (id !== (1 << SIM_BIT_CONFIG_V2.GOD_ID) - 1 && id < pool.length) config.e[key] = pool[id];
                 } else {
                     const id = reader.read(SIM_BIT_CONFIG_V2.ITEM_ID);
-                    if (key.endsWith('_p')) {
-                        const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
-                        if (id < pool.length) config.e[key] = { item: pool[id], effectIdx: eId };
-                    } else {
-                        if (id < pool.length) config.e[key] = pool[id];
+                    if (id !== (1 << SIM_BIT_CONFIG_V2.ITEM_ID) - 1 && id < pool.length) {
+                        if (key.endsWith('_p')) {
+                            const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                            config.e[key] = { item: pool[id], effectIdx: eId };
+                        } else {
+                            config.e[key] = pool[id];
+                        }
+                    } else if (key.endsWith('_p')) {
+                        // 即使 ID 是空的，也要讀取完對應的詞條位元以保持位元偏移正確
+                        reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
                     }
                 }
-
             });
 
             return config;
