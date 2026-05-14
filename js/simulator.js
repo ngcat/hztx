@@ -2,6 +2,7 @@
  * 模擬配裝器組件
  */
 const SimulatorComponent = {
+    components: { SimulatorPopover, SimulatorSummary },
     props: ['allItems'],
     setup(props) {
         const { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, toRef, nextTick } = Vue;
@@ -357,69 +358,6 @@ const SimulatorComponent = {
             return result;
         };
 
-        const getCombinedEffectsSync = (equipConfig) => {
-            const result = {
-                skills: {},
-                display: []
-            };
-
-            const extractedSkills = getHeroAndLieutSkillsSync(equipConfig);
-
-            if (extractedSkills.hero_fate.length > 0) {
-                result.display.push({
-                    label: `🌟 ${heroState.value.selectedHeroName}・技能宿命`,
-                    source: heroState.value.selectedHeroName,
-                    effects: extractedSkills.hero_fate.map(s => ({ text: s.text, astEntry: s.astEntry }))
-                });
-            }
-
-            ['rear_hero', 'front_hero'].forEach(slotId => {
-                const skills = extractedSkills[slotId];
-                if (skills && skills.length > 0) {
-                    const lieutName = equipConfig[slotId];
-                    const posLabel = slotId === 'front_hero' ? '前軍' : '後軍';
-                    result.display.push({
-                        label: `🎖️ ${posLabel}副將・${lieutName}`,
-                        source: lieutName,
-                        position: posLabel,
-                        effects: skills.map(s => ({ text: s.text, astEntry: s.astEntry }))
-                    });
-                }
-            });
-
-            getEquippedItemsSync(equipConfig).forEach((item, index) => {
-                if (item.slotKey && item.slotKey.endsWith('_hero')) return;
-
-                let displayName = item.name || item.parentName || "未知裝備";
-                if (item.isPartial) {
-                    displayName = `${displayName}`;
-                    let counter = 1;
-                    const baseName = displayName;
-                    while (result.display.some(d => d.label === displayName)) {
-                        displayName = `${baseName} ${counter}`;
-                        counter++;
-                    }
-                }
-
-                let effects = item.effects || [];
-                if (item.slotKey === 'god') {
-                    effects = effects.concat(item.mutation || [], item.rage_cond || [], item.spell || []);
-                }
-
-                // 裝備類：此處 effIdx 資訊由 interpretEffectSync 根據 sourceItemName 與 index 再次定位，
-                // 為了保持架構一致性，此處維持字串輸出，或可封裝為物件但不帶預定義 astEntry
-                result.display.push({
-                    label: displayName,
-                    source: item.name || item.parentName,
-                    effects: effects.map((eff, localIdx) => ({
-                        text: eff,
-                        effIdx: item.isPartial ? item.effectIdx : localIdx
-                    }))
-                });
-            });
-
-            return result;
-        };
         const calculateTotalStats = (equipConfig = selectedEquip.value) => {
             const totals = {};
             const context = getCurrentContext(equipConfig);
@@ -525,27 +463,41 @@ const SimulatorComponent = {
         const allGods = ref([]);
         const astData = ref({});
 
-        // 載入英雄資料
-        fetch('data/hero.json').then(res => res.json()).then(data => {
-            allHeroes.value = data;
-            // 預設選中關羽並同步屬性
-            updateHeroAttributes('關羽');
-        });
+        // --- 穩定索引池 (用於分享連結，避免受 AST 或 UI 排序影響) ---
+        const STABLE_POOLS = {
+            heroes: [],
+            gods: [],
+            equips: []
+        };
 
-        // 獨立載入神靈資料
-        fetch('data/god.json').then(res => res.json()).then(data => {
-            allGods.value = data.map(item => ({ ...item, group: 'god' }));
-        });
-
-        // 載入 AST 資料 (合併裝備與英雄)
+        // 統一載入所有必要資料
         Promise.all([
-            fetch('data/equip_ast.json?v=20260512').then(res => res.json()),
-            fetch('data/hero_ast.json?v=20260512').then(res => res.json())
-        ]).then(([equipAst, heroAst]) => {
+            window.DataManager.getJSON('data/hero.json'),
+            window.DataManager.getJSON('data/god.json'),
+            window.DataManager.getJSON('data/equip.json'),
+            window.DataManager.getJSON('data/equip_ast.json'),
+            window.DataManager.getJSON('data/hero_ast.json')
+        ]).then(([heroes, gods, equips, equipAst, heroAst]) => {
+            // 1. 填充穩定池
+            STABLE_POOLS.heroes = heroes;
+            STABLE_POOLS.gods = gods;
+            STABLE_POOLS.equips = equips;
+
+            // 2. 填充響應式資料
+            allHeroes.value = heroes;
+            allGods.value = gods.map(item => ({ ...item, group: 'god' }));
             astData.value = { ...equipAst, ...heroAst };
+
+            // 3. 預設選中並同步
+            updateHeroAttributes('關羽');
+
+            // 4. 資料就緒後處理網址參數
+            handleUrlParams();
         }).catch(err => {
-            console.error('AST 資料載入失敗', err);
+            console.error('資料載入失敗', err);
         });
+
+
 
         const selectHero = (name) => {
             if (activeHeroSlot.value === 'rear_hero' || activeHeroSlot.value === 'front_hero') {
@@ -762,8 +714,6 @@ const SimulatorComponent = {
                 }
             });
 
-            // 2. 掃描主將自身技能 (天賦、宿命等)
-            const heroData = getHeroAndLieutSkillsSync(equipConfig);
 
             // 2. 獨立算出 normalItems (不含「裝備5件金色品質」詞條)，以防迴圈依賴
 
@@ -1033,15 +983,10 @@ const SimulatorComponent = {
 
         const isSummaryOpen = ref(false);
         const activeSummaryTab = ref('effects'); // 預設顯示裝備詞條
-        const popoverView = ref('items'); // 'items' or 'effects'
-        const pendingItem = ref(null);
-
-        // 監聽 activeSlot 變化，每次打開新插槽都重置彈窗狀態
+        // 監聽 activeSlot 變化，切換插槽時重置排序
         watch(activeSlot, (newVal) => {
             if (newVal) {
-                popoverView.value = 'items';
-                pendingItem.value = null;
-                sortStats.value = []; // 切換插槽時重置排序
+                sortStats.value = []; 
             }
         });
 
@@ -1053,150 +998,12 @@ const SimulatorComponent = {
             });
         });
 
-        const formatStatValue = (stat, val) => {
-            if (val === null) return '';
-            // 數值顯示規則：
-            // 1. 包含「提升」、「強度」、「減免」、「率」、「傷害」、「免傷」、「按比例」均顯示為 %
-            // 2. 只有純「基礎、兵力、速度、四維、攻擊、防禦」且不含「提升」時顯示為固定點數
-            const isPercent = /提升|強度|減免|率|傷害|免傷|按比例/.test(stat);
-            const isRaw = /基礎|兵力|速度|武力|智力|統御|魅力|攻擊|防禦/.test(stat) && !isPercent;
-            const prefix = val > 0 ? '+' : '';
-            return `${prefix}${val}${isRaw ? '' : '%'}`;
-        };
 
-        const isPopoverUpwards = (slotId) => {
-            const el = document.querySelector(`.equip-slot.${slotId}`);
-            if (!el) return false;
-            const rect = el.getBoundingClientRect();
-            return rect.bottom > window.innerHeight * 0.7;
-        };
-
-        const statAggregation = computed(() => {
-            const totals = calculateTotalStats();
-            const groups = {
-                core: { '武力': 0, '智力': 0, '魅力': 0, '統御': 0 },
-                left: [
-                    { id: 'front', label: '前軍', stats: [] },
-                    { id: 'rear', label: '後軍', stats: [] },
-                    { id: 'attack', label: '攻擊時狀態', stats: [] },
-                    { id: 'defense', label: '受傷害狀態', stats: [] },
-                    { id: 'other', label: '其他', stats: [] },
-                    { id: 'enemy', label: '敵方', stats: [] }
-                ],
-                right: [
-                    { id: 'y1', label: '遠戰首回合', stats: [] },
-                    { id: 'y2', label: '遠戰第二回合', stats: [] },
-                    { id: 'j1', label: '近戰首回合', stats: [] },
-                    { id: 'j2', label: '近戰第二回合', stats: [] }
-                ]
-            };
-
-            // 1. 分離常態值與回合加成
-            const baseTotals = {};      // 常態屬性
-            const roundBonuses = {};    // 各回合額外加成: { '遠戰首回合': { '傷害%': 10 } }
-
-            Object.entries(totals).forEach(([stat, val]) => {
-                if (groups.core.hasOwnProperty(stat)) {
-                    groups.core[stat] = val;
-                    return;
-                }
-
-                const cMatch = stat.match(/__C:(.*?)__/);
-                if (cMatch) {
-                    const round = cMatch[1];
-                    const cleanName = stat.replace(cMatch[0], '');
-                    if (!roundBonuses[round]) roundBonuses[round] = {};
-                    if (val === null) {
-                        roundBonuses[round][cleanName] = null;
-                    } else if (roundBonuses[round][cleanName] !== null) {
-                        roundBonuses[round][cleanName] = (roundBonuses[round][cleanName] || 0) + val;
-                    }
-                } else {
-                    if (val === null) {
-                        baseTotals[stat] = null;
-                    } else if (baseTotals[stat] !== null) {
-                        baseTotals[stat] = (baseTotals[stat] || 0) + val;
-                    }
-                }
-            });
-
-            // 2. 處理左側 (常態顯示)
-            Object.entries(baseTotals).forEach(([stat, val]) => {
-                let cleanName = stat;
-                let position = null;
-                const pMatch = stat.match(/__P:(.*?)__/);
-                if (pMatch) {
-                    position = pMatch[1];
-                    cleanName = cleanName.replace(pMatch[0], '');
-                }
-
-                const formatted = { name: cleanName, value: formatStatValue(cleanName, val) };
-                let pos = position || (cleanName.startsWith('前軍') ? '前軍' : cleanName.startsWith('後軍') ? '後軍' : '其他');
-
-                // 新增：將特定兵種歸類到對應位置
-                if (pos === '其他') {
-                    if (cleanName.startsWith('步兵') || cleanName.startsWith('騎兵')) pos = '前軍';
-                    else if (cleanName.startsWith('方士') || cleanName.startsWith('弓兵')) pos = '後軍';
-                }
-
-                if (pos === '前軍') {
-                    if (cleanName.startsWith('前軍')) formatted.name = cleanName.substring(2);
-                    groups.left[0].stats.push(formatted);
-                } else if (pos === '後軍') {
-                    if (cleanName.startsWith('後軍')) formatted.name = cleanName.substring(2);
-                    groups.left[1].stats.push(formatted);
-                } else if (pos === '敵方' || cleanName.startsWith('敵方')) {
-                    groups.left[5].stats.push(formatted);
-                } else if (cleanName.includes('受到') && cleanName.includes('傷害') || cleanName.includes('免傷')) {
-                    groups.left[3].stats.push(formatted);
-                } else if (cleanName.includes('傷害')) {
-                    groups.left[2].stats.push(formatted);
-                } else {
-                    groups.left[4].stats.push(formatted);
-                }
-            });
-
-            // 3. 處理右側 (回合峰值 = 常態中對應屬性的總和 + 回合額外加成)
-            // 先計算一個「純淨」的常態總表 (不帶 __P: 標籤) 用於加總
-            const pureBase = {};
-            Object.entries(baseTotals).forEach(([stat, val]) => {
-                const clean = stat.replace(/__P:.*?__/, '');
-                pureBase[clean] = (pureBase[clean] || 0) + val;
-            });
-
-            const combatConfigs = [
-                { id: 'y1', keys: ['遠戰回合', '遠戰首回合'] },
-                { id: 'y2', keys: ['遠戰回合', '遠戰第二回合'] },
-                { id: 'j1', keys: ['近戰回合', '近戰首回合'] },
-                { id: 'j2', keys: ['近戰回合', '近戰第二回合'] }
-            ];
-
-            combatConfigs.forEach(cfg => {
-                const roundExtra = {};
-                cfg.keys.forEach(k => {
-                    if (roundBonuses[k]) {
-                        Object.entries(roundBonuses[k]).forEach(([s, v]) => {
-                            roundExtra[s] = (roundExtra[s] || 0) + v;
-                        });
-                    }
-                });
-
-                const group = groups.right.find(g => g.id === cfg.id);
-                // 只顯示該回合額外獲得的加成 (不疊加常態基礎屬性)
-                Object.entries(roundExtra).forEach(([stat, val]) => {
-                    group.stats.push({
-                        name: stat,
-                        value: formatStatValue(stat, val)
-                    });
-                });
-            });
-
-            // 左右兩側所有分組均固定顯示，不再移除空分組
-
-            return groups;
-        });
 
         const handleSlotClick = (slot) => {
+            // 切換插槽時，關閉主將搜尋選單
+            showHeroSearch.value = false;
+            
             activeSlot.value = (activeSlot.value === slot.id ? null : slot.id);
             if (activeSlot.value && (slot.id === 'rear_hero' || slot.id === 'front_hero')) {
                 activeHeroSlot.value = slot.id;
@@ -1217,94 +1024,12 @@ const SimulatorComponent = {
             return h ? h.image : 'unknown.png';
         };
 
-        const getPopoverStyle = (slotId) => {
-            const el = document.querySelector(`.equip-slot.${slotId}`);
-            if (!el) return {};
-
-            const rect = el.getBoundingClientRect();
-            const popoverWidth = 280;
-            const screenWidth = window.innerWidth;
-
-            let left = '50%';
-            let transform = 'translateX(-50%)';
-            let arrowLeft = '50%';
-
-            const expectedLeft = rect.left + rect.width / 2 - popoverWidth / 2;
-            const expectedRight = rect.left + rect.width / 2 + popoverWidth / 2;
-
-            if (expectedLeft < 15) {
-                left = `-${rect.left - 15}px`;
-                transform = 'none';
-                arrowLeft = `${rect.width / 2 + (rect.left - 15)}px`;
-            } else if (expectedRight > screenWidth - 15) {
-                const rightDist = screenWidth - rect.right;
-                left = 'auto';
-                const rightPos = `-${rightDist - 15}px`;
-                arrowLeft = `${popoverWidth - (rect.width / 2 + rightDist - 15)}px`;
-
-                // 計算可用空間，防止彈窗超出螢幕
-                const isUp = isPopoverUpwards(slotId);
-                const availableSpace = isUp ? (rect.top - 20) : (window.innerHeight - rect.bottom - 20);
-                const maxH = Math.max(250, Math.min(450, availableSpace));
-
-                return {
-                    left: 'auto',
-                    right: rightPos,
-                    transform: 'none',
-                    '--arrow-left': arrowLeft,
-                    maxHeight: `${maxH}px`,
-                    minHeight: `${Math.min(320, maxH)}px`
-                };
-            }
-
-            // 計算可用空間，防止彈窗超出螢幕
-            const isUp = isPopoverUpwards(slotId);
-            const availableSpace = isUp ? (rect.top - 20) : (window.innerHeight - rect.bottom - 20);
-            const maxH = Math.max(250, Math.min(450, availableSpace));
-
-            return {
-                left,
-                transform,
-                '--arrow-left': arrowLeft,
-                maxHeight: `${maxH}px`,
-                minHeight: `${Math.min(320, maxH)}px`
-            };
+        const selectItemForSlot = (slotId, payload) => {
+            selectedEquip.value[slotId] = payload;
+            activeSlot.value = null;
+            slotSearchQuery.value = '';
         };
 
-        const selectItemForSlot = (slotId, item, effectIdx = -1) => {
-            if (slotId.endsWith('_p')) {
-                // 如果已經指定了詞條索引 (來自自動優化或二階選單)
-                if (effectIdx !== -1) {
-                    selectedEquip.value[slotId] = { item, effectIdx };
-                    activeSlot.value = null;
-                    slotSearchQuery.value = '';
-                    popoverView.value = 'items';
-                    pendingItem.value = null;
-                    return;
-                }
-
-                // 自動優化邏輯
-                if (sortStats.value.length > 0 && typeof item._bestEffectIdx === 'number') {
-                    selectedEquip.value[slotId] = { item, effectIdx: item._bestEffectIdx };
-                    activeSlot.value = null;
-                    slotSearchQuery.value = '';
-                } else {
-                    // 進入二階選單
-                    pendingItem.value = item;
-                    popoverView.value = 'effects';
-                }
-            } else {
-                // 一般插槽
-                selectedEquip.value[slotId] = item;
-                activeSlot.value = null;
-                slotSearchQuery.value = '';
-            }
-        };
-
-        const backToItems = () => {
-            popoverView.value = 'items';
-            pendingItem.value = null;
-        };
 
         const handleSearchBlur = () => {
             // 移除自動關閉，改由 window mousedown 處理點擊外部關閉
@@ -1318,7 +1043,6 @@ const SimulatorComponent = {
         const hasSelectedItems = computed(() => {
             return Object.values(selectedEquip.value).some(v => v !== null);
         });
-        const combinedEffects = computed(() => getCombinedEffectsSync(selectedEquip.value).display);
 
         const handleUrlParams = () => {
             const params = new URLSearchParams(window.location.search);
@@ -1327,7 +1051,7 @@ const SimulatorComponent = {
             const encoded = params.get('sim');
             if (encoded) {
                 try {
-                    const config = unpackConfigV2(encoded, STABLE_POOLS.heroes, STABLE_POOLS.items, STABLE_POOLS.gods);
+                    const config = unpackConfigV2(encoded, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
                     heroState.value.selectedHeroName = config.h;
                     updateHeroAttributes(config.h);
                     heroState.value.isAwakened = (config.s & 1) !== 0;
@@ -1343,7 +1067,7 @@ const SimulatorComponent = {
             const legacyEncoded = params.get('c');
             if (legacyEncoded) {
                 try {
-                    const config = decompress(legacyEncoded, STABLE_POOLS.heroes, STABLE_POOLS.items, STABLE_POOLS.gods);
+                    const config = decompress(legacyEncoded, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
                     if (config && config.h) {
                         heroState.value.selectedHeroName = config.h;
                         updateHeroAttributes(config.h);
@@ -1357,11 +1081,6 @@ const SimulatorComponent = {
             }
         };
 
-        onMounted(async () => {
-
-            await initStablePools();
-            handleUrlParams();
-        });
 
         const allSets = computed(() => {
             const setMap = {};
@@ -1436,35 +1155,11 @@ const SimulatorComponent = {
             EFFECT_IDX: 3
         };
 
-        // --- 穩定索引池 (用於分享連結，避免受 AST 或 UI 排序影響) ---
-        const STABLE_POOLS = {
-            heroes: [],
-            gods: [],
-            items: [],
-            loaded: false
-        };
 
-        const initStablePools = async () => {
-            if (STABLE_POOLS.loaded) return;
-            try {
-                const [h, g, e] = await Promise.all([
-                    fetch('data/hero.json').then(r => r.json()),
-                    fetch('data/god.json').then(r => r.json()),
-                    fetch('data/equip.json').then(r => r.json())
-                ]);
-                STABLE_POOLS.heroes = h;
-                STABLE_POOLS.gods = g;
-                STABLE_POOLS.items = e;
-                STABLE_POOLS.loaded = true;
-            } catch (err) {
-                console.error("Failed to load stable pools for sharing", err);
-            }
-        };
-
-        const getStablePool = (slotId) => {
-            if (slotId === 'rear_hero' || slotId === 'front_hero') return STABLE_POOLS.heroes;
-            if (slotId === 'god') return STABLE_POOLS.gods;
-            return STABLE_POOLS.items;
+        const getStablePool = (slotId, poolSource = STABLE_POOLS) => {
+            if (slotId === 'rear_hero' || slotId === 'front_hero') return poolSource.heroes;
+            if (slotId === 'god') return poolSource.gods;
+            return poolSource.equips;
         };
 
         const Base62 = {
@@ -1532,7 +1227,7 @@ const SimulatorComponent = {
             return items;
         };
 
-        const packConfigV2 = (config, heroes, items, gods) => {
+        const packConfigV2 = (config, heroes, equips, gods) => {
             const writer = new BitWriter();
             writer.write(2, SIM_BIT_CONFIG_V2.VERSION); // Version 2
 
@@ -1550,7 +1245,7 @@ const SimulatorComponent = {
 
             // 2. 按固定順序完整寫入所有插槽
             SIM_BIT_SLOT_ORDER.forEach((key) => {
-                const pool = getStablePool(key);
+                const pool = getStablePool(key, { heroes, gods, equips });
                 const val = config.e[key];
 
                 let name = typeof val === 'string' ? val : (val?.name || val?.n || (val?.item ? (val.item.name || val.item.n) : ''));
@@ -1590,7 +1285,7 @@ const SimulatorComponent = {
             return writer.toString();
         };
 
-        const unpackConfigV2 = (str, heroes, items, gods) => {
+        const unpackConfigV2 = (str, heroes, equips, gods) => {
             const reader = new BitReader(str);
             const version = reader.read(SIM_BIT_CONFIG_V2.VERSION);
             if (version !== 2) throw new Error("Not V2");
@@ -1602,15 +1297,15 @@ const SimulatorComponent = {
             const hFlags = reader.read(SIM_BIT_CONFIG_V2.HERO_FLAGS);
             reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX); // 跳過預留位元
 
-            // 從原始 hero.json 池還原
-            let hName = (hIdx < STABLE_POOLS.heroes.length) ? STABLE_POOLS.heroes[hIdx].name : '關羽';
+            // 從傳入的池還原
+            let hName = (hIdx < heroes.length) ? heroes[hIdx].name : '關羽';
             if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
             else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
             const config = { h: hName, s: hFlags, e: {} };
 
             // 2. 按固定順序讀取所有插槽
             SIM_BIT_SLOT_ORDER.forEach((key) => {
-                const pool = getStablePool(key);
+                const pool = getStablePool(key, { heroes, gods, equips });
 
                 if (key === 'front_hero' || key === 'rear_hero') {
                     const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
@@ -1893,36 +1588,9 @@ const SimulatorComponent = {
         return {
             activeSlot, slotSearchQuery, sortStats, selectedEquip, simulatorSlots,
             filteredSlotItems, activeSlotItems, selectItemForSlot, handleSearchBlur,
-            toggleSortStat(stat) {
-                const idx = sortStats.value.indexOf(stat);
-                if (idx === -1) sortStats.value.push(stat);
-                else sortStats.value.splice(idx, 1);
-            },
-            getSortBonus(item, slot, cachedCurrentTotals = null) {
-                if (sortStats.value.length === 0) return 0;
-                const currentTotals = cachedCurrentTotals || calculateTotalStats();
-                const tempEquip = { ...selectedEquip.value };
-                const isDeitySlot = slot.id && slot.id.endsWith('_p');
-                let total = 0;
-                if (isDeitySlot) {
-                    let maxItemBonus = -Infinity;
-                    (item.effects || []).forEach((eff, idx) => {
-                        tempEquip[slot.id] = { item, effectIdx: idx };
-                        const potentialTotals = calculateTotalStats(tempEquip);
-                        let currentItemBonus = 0;
-                        sortStats.value.forEach(stat => { currentItemBonus += (potentialTotals[stat] || 0) - (currentTotals[stat] || 0); });
-                        if (currentItemBonus > maxItemBonus) maxItemBonus = currentItemBonus;
-                    });
-                    total = maxItemBonus;
-                } else {
-                    tempEquip[slot.id] = item;
-                    const potentialTotals = calculateTotalStats(tempEquip);
-                    sortStats.value.forEach(stat => { total += (potentialTotals[stat] || 0) - (currentTotals[stat] || 0); });
-                }
-                return total;
-            },
-            clearAllEquip, hasSelectedItems, combinedEffects,
-            statAggregation, allSets, applySet,
+            clearAllEquip, hasSelectedItems,
+            statAggregation: null, // 已遷移至 Summary 組件
+            allSets, applySet,
             heroState,
             renderEffectSegments(effData, source = null, options = {}) {
                 if (!effData) return [];
@@ -1938,11 +1606,8 @@ const SimulatorComponent = {
             },
             allHeroes, updateHeroAttributes,
             heroSearchQuery, showHeroSearch, filteredHeroes, selectHero,
-            isPopoverUpwards, getPopoverStyle,
-            handleSlotClick, getHeroImage,
-            isSummaryOpen,
+            handleSlotClick, getHeroImage, getEquippedItemsSync, getHeroAst, getHeroAndLieutSkillsSync, calculateTotalStats,
             soulJadeSlots, partialSlots,
-            popoverView, pendingItem, backToItems,
             shareConfig() {
                 const config = {
                     h: heroState.value.selectedHeroName,
@@ -1955,15 +1620,13 @@ const SimulatorComponent = {
                     else config.e[k] = typeof v === 'string' ? v : v.name;
                 });
                 try {
-                    const encoded = packConfigV2(config, allHeroes.value, props.allItems, allGods.value);
+                    const encoded = packConfigV2(config, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
                     const url = new URL(window.location.origin + window.location.pathname);
                     url.searchParams.set('sim', encoded);
                     const shareUrl = url.toString();
                     Utils.copyToClipboard(shareUrl).then(() => { alert('配置連結已複製到剪貼簿！'); }).catch(() => { window.prompt('複製失敗，請手動複製下方連結：', shareUrl); });
                 } catch (e) { alert('分享失敗，請稍後再試。'); }
             },
-            activeSummaryTab,
-            formatStatValue,
             isCompActive
         };
     },
@@ -1995,15 +1658,16 @@ const SimulatorComponent = {
                                     {{ heroState.selectedHeroName || '請選擇英雄' }}
                                     <i class="fas fa-chevron-down"></i>
                                 </div>
-                                <div v-if="showHeroSearch && activeHeroSlot === 'main'" class="hero-search-popover">
-                                    <input type="text" v-model="heroSearchQuery" placeholder="搜尋主將..." autofocus>
-                                    <div class="hero-results-list">
-                                        <div v-for="h in filteredHeroes" :key="h.name" class="hero-result-item" @mousedown="selectHero(h.name)">
-                                            <span class="hero-result-name">{{ h.name }}</span>
-                                            <span class="hero-result-tags">({{ h.category }})</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <simulator-popover 
+                                    :show="showHeroSearch && activeHeroSlot === 'main'"
+                                    type="hero"
+                                    v-model="heroSearchQuery"
+                                    :results="filteredHeroes"
+                                    trigger-selector=".current-hero-display"
+                                    :calculate-total-stats="calculateTotalStats"
+                                    :selected-equip="selectedEquip"
+                                    :hero-state="heroState"
+                                    @select="selectHero" />
                             </div>
                         </div>
                         <div class="control-group">
@@ -2020,7 +1684,7 @@ const SimulatorComponent = {
                     <div class="equip-linear-wrapper">
                         <div v-for="slot in simulatorSlots" :key="slot.id" :class="['equip-slot', slot.id, { 'active': activeSlot === slot.id }]">
                             <div class="slot-label">{{ slot.name }}</div>
-                            <div class="slot-card" @click="activeSlot = (activeSlot === slot.id ? null : slot.id)">
+                            <div class="slot-card" @click="showHeroSearch = false; activeSlot = (activeSlot === slot.id ? null : slot.id)">
                                 <template v-if="selectedEquip[slot.id]">
                                     <div class="full-equip-display">
                                         <img :src="'img/' + selectedEquip[slot.id].image" :alt="selectedEquip[slot.id].name" @error="$event.target.src = 'img/unknown.png'">
@@ -2033,29 +1697,19 @@ const SimulatorComponent = {
                                 </div>
                             </div>
                             
-                            <div v-if="activeSlot === slot.id" :class="['slot-search-popover', { 'upwards': isPopoverUpwards(slot.id) }]" :style="getPopoverStyle(slot.id)">
-                                <div class="popover-sort-options">
-                                    <div class="sort-label-main">依屬性排序</div>
-                                    <div class="sort-checkboxes">
-                                        <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
-                                            <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
-                                        </label>
-                                    </div>
-                                </div>
-                                <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + slot.name + '...'" autofocus @blur="handleSearchBlur">
-                                            <div class="search-results-list">
-                                                <div v-for="item in activeSlotItems" :key="item.name" 
-                                                     class="search-result-item" 
-                                                     @mousedown="selectItemForSlot(slot.id, item)">
-                                                    <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                                    <div class="result-info">
-                                                        <div class="result-name">{{ item.name }}</div>
-                                                        <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
-                                                    </div>
-                                                </div>
-                                                <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
-                                            </div>
-                            </div>
+                            <simulator-popover
+                                :show="activeSlot === slot.id"
+                                type="item"
+                                :slot="slot"
+                                v-model="slotSearchQuery"
+                                :results="activeSlotItems"
+                                :sort-stats="sortStats"
+                                :trigger-selector="'.equip-slot.' + slot.id"
+                                :calculate-total-stats="calculateTotalStats"
+                                :selected-equip="selectedEquip"
+                                :hero-state="heroState"
+                                @select="(payload) => selectItemForSlot(slot.id, payload)"
+                                @blur="handleSearchBlur" />
                         </div>
                     </div>
 
@@ -2097,49 +1751,20 @@ const SimulatorComponent = {
                                 </div>
                             </div>
 
-                            <div v-if="activeSlot === slot.id" :class="['slot-search-popover', { 'upwards': isPopoverUpwards(slot.id) }]" :style="getPopoverStyle(slot.id)">
-                                <!-- 副將英雄搜尋模式 -->
-                                <template v-if="slot.id === 'rear_hero' || slot.id === 'front_hero'">
-                                    <div class="popover-sort-options">
-                                        <div class="sort-label-main">依屬性排序</div>
-                                        <div class="sort-checkboxes">
-                                            <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
-                                                <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <input type="text" v-model="heroSearchQuery" :placeholder="'搜尋' + slot.name + '...'" autofocus>
-                                    <div class="hero-results-list">
-                                        <div v-for="h in filteredHeroes" :key="h.name" class="hero-result-item" @mousedown="selectHero(h.name)">
-                                            <span class="hero-result-name">{{ h.name }}</span>
-                                            <span class="hero-result-tags">({{ h.category }})</span>
-                                            <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': h._sortBonus < 0, 'sort-zero': h._sortBonus === 0 }]" style="margin-left: auto;">{{ h._sortBonus > 0 ? '+' : '' }}{{ h._sortBonus }}</div>
-                                        </div>
-                                    </div>
-                                </template>
-                                <template v-else>
-                                    <div class="popover-sort-options" v-if="slot.id !== 'god'">
-                                        <div class="sort-label-main">依屬性排序</div>
-                                        <div class="sort-checkboxes">
-                                            <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
-                                                <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + (slot.id === 'god' ? '神靈' : '所有裝備') + '...'" autofocus @blur="handleSearchBlur">
-                                    <div class="search-results-list">
-                                        <div v-for="item in activeSlotItems" :key="item.name" class="search-result-item" @mousedown="selectItemForSlot(slot.id, item)">
-                                            <img v-if="slot.id !== 'god'" :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                            <div class="result-info">
-                                                <div class="result-name">{{ item.name }}</div>
-                                                <div style="font-size: 0.7rem; opacity: 0.5; margin-left: auto;">{{ item.category }}</div>
-                                                <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]" style="margin-left: 8px; min-width: 32px; text-align: right;">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
-                                            </div>
-                                        </div>
-                                        <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
-                                    </div>
-                                </template>
-                            </div>
+                            <simulator-popover
+                                :show="activeSlot === slot.id"
+                                :type="slot.id === 'rear_hero' || slot.id === 'front_hero' ? 'lieutenant' : 'item'"
+                                :slot="slot"
+                                :modelValue="slot.id === 'rear_hero' || slot.id === 'front_hero' ? heroSearchQuery : slotSearchQuery"
+                                @update:modelValue="val => { if (slot.id === 'rear_hero' || slot.id === 'front_hero') heroSearchQuery = val; else slotSearchQuery = val; }"
+                                :results="slot.id === 'rear_hero' || slot.id === 'front_hero' ? filteredHeroes : activeSlotItems"
+                                :sort-stats="sortStats"
+                                :trigger-selector="'.equip-slot.' + slot.id"
+                                :calculate-total-stats="calculateTotalStats"
+                                :selected-equip="selectedEquip"
+                                :hero-state="heroState"
+                                @select="(payload) => (slot.id === 'rear_hero' || slot.id === 'front_hero') ? selectHero(payload) : selectItemForSlot(slot.id, payload)"
+                                @blur="handleSearchBlur" />
                         </div>
                     </div>
 
@@ -2160,145 +1785,37 @@ const SimulatorComponent = {
                                 </div>
                             </div>
                             
-                            <div v-if="activeSlot === slot.id" 
-                                 :class="['slot-search-popover', { 'upwards': isPopoverUpwards(slot.id) }]"
-                                 :style="getPopoverStyle(slot.id)">
-                                <div class="popover-viewport">
-                                    <div class="popover-track" :class="{ 'slide-effects': popoverView === 'effects' }">
-                                        <div class="popover-layer items-layer">
-                                            <div class="popover-sort-options">
-                                                <div class="sort-label-main">依屬性排序</div>
-                                                <div class="sort-checkboxes">
-                                                    <label v-for="s in ['武力', '智力', '魅力', '統御']" :key="s">
-                                                        <input type="checkbox" :checked="sortStats.includes(s)" @change="toggleSortStat(s)"> {{ s }}
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <input type="text" v-model="slotSearchQuery" :placeholder="'搜尋' + slot.category + '...'" autofocus @blur="handleSearchBlur">
-                                            <div class="search-results-list">
-                                                <div v-for="item in activeSlotItems" :key="item.name" class="search-result-item" @mousedown="selectItemForSlot(slot.id, item)">
-                                                    <img :src="'img/' + item.image" alt="" @error="$event.target.src = 'img/unknown.png'">
-                                                    <div class="result-info">
-                                                        <div class="result-name">{{ item.name }}</div>
-                                                        <div v-if="sortStats.length > 0" :class="['sort-bonus', { 'sort-negative': item._sortBonus < 0, 'sort-zero': item._sortBonus === 0 }]">{{ item._sortBonus > 0 ? '+' : '' }}{{ item._sortBonus }}</div>
-                                                    </div>
-                                                </div>
-                                                <div v-if="activeSlotItems.length === 0" class="no-results">無相符結果</div>
-                                            </div>
-                                        </div>
-                                        <div class="popover-layer effects-layer" v-if="pendingItem">
-                                            <div class="popover-layer-header">
-                                                <button class="popover-back-btn" @click="backToItems"><i class="fas fa-chevron-left"></i></button>
-                                                <span class="pending-item-name">{{ pendingItem.name }}</span>
-                                            </div>
-                                            <div class="popover-effects-list">
-                                                <div v-for="(eff, idx) in pendingItem.effects" 
-                                                     :key="idx" 
-                                                     class="popover-effect-item"
-                                                     @click="selectItemForSlot(slot.id, pendingItem, idx)">
-                                                    <span class="eff-idx">{{ idx + 1 }}</span>
-                                                    <span class="eff-text">{{ eff }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <simulator-popover
+                                 :show="activeSlot === slot.id"
+                                 type="partial"
+                                 :slot="slot"
+                                 v-model="slotSearchQuery"
+                                 :results="activeSlotItems"
+                                 :sort-stats="sortStats"
+                                 :trigger-selector="'.equip-slot.' + slot.id"
+                                 :calculate-total-stats="calculateTotalStats"
+                                 :selected-equip="selectedEquip"
+                                 :hero-state="heroState"
+                                 @select="(payload) => selectItemForSlot(slot.id, payload)"
+                                 @blur="handleSearchBlur" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 使用 Teleport 將按鈕傳送到 body 下，防止被父容器的 transform 干擾 fixed 定位 -->
-            <teleport to="body" v-if="isCompActive">
-                <button class="mobile-summary-toggle" :class="{ 'is-open': isSummaryOpen }" @click="isSummaryOpen = !isSummaryOpen">
-
-                    <i :class="isSummaryOpen ? 'fas fa-times' : 'fas fa-chart-bar'"></i>
-                </button>
-            </teleport>
-
-            <div v-if="isCompActive" class="summary-overlay" :class="{ 'show': isSummaryOpen }" @click="isSummaryOpen = false"></div>
-
-            <div v-if="isCompActive" class="simulator-summary" :class="{ 'mobile-open': isSummaryOpen }">
-                <div class="summary-header">
-                    <span class="header-tag">屬性彙總</span>
-                </div>
-
-                <div class="summary-content">
-                    <template v-if="hasSelectedItems">
-                        <!-- 1. 四維彙總 (固定在最上方) -->
-                        <div class="stats-grid core-grid">
-                            <div v-for="(val, stat) in statAggregation.core" :key="stat" class="stat-pill">
-                                <span class="stat-name">{{ stat }}</span>
-                                <span class="stat-value" :class="{ 'pos': val > 0, 'neg': val < 0 }">+{{ val }}</span>
-                            </div>
-                        </div>
-
-                        <!-- 2. Tab 切換按鈕 -->
-                        <div class="summary-tabs">
-                            <button :class="{ active: activeSummaryTab === 'effects' }" @click="activeSummaryTab = 'effects'">
-                                <i class="fas fa-magic"></i> 裝備詞綴
-                            </button>
-                            <button :class="{ active: activeSummaryTab === 'stats' }" @click="activeSummaryTab = 'stats'">
-                                <i class="fas fa-list-ul"></i> 數值計算
-                            </button>
-                        </div>
-
-                        <!-- 3. Tab 內容 -->
-                        <div class="summary-tab-content">
-                            <!-- 屬性匯總分頁 -->
-                            <div v-if="activeSummaryTab === 'stats'" class="tab-pane stats-pane">
-                                <div class="stat-summary-details">
-                                    <!-- 左欄: 位置與其他 -->
-                                    <div class="stat-col left-col">
-                                        <div v-for="group in statAggregation.left" :key="group.id" class="stat-group">
-                                            <div class="group-header">{{ group.label }}</div>
-                                            <div class="group-content">
-                                                <div v-for="stat in group.stats" :key="stat.name" class="stat-detail-item">
-                                                    <span class="name">{{ stat.name }}</span>
-                                                    <span class="value">{{ stat.value }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- 右欄: 回合 -->
-                                    <div class="stat-col right-col">
-                                        <div v-for="group in statAggregation.right" :key="group.id" class="stat-group">
-                                            <div class="group-header">{{ group.label }}</div>
-                                            <div class="group-content">
-                                                <div v-for="stat in group.stats" :key="stat.name" class="stat-detail-item">
-                                                    <span class="name">{{ stat.name }}</span>
-                                                    <span class="value">{{ stat.value }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- 裝備詞條分頁 -->
-                            <div v-if="activeSummaryTab === 'effects'" class="tab-pane effects-pane">
-                                <div v-for="item in combinedEffects" :key="item.label" class="summary-group">
-                                    <div class="summary-item-title">{{ item.label }}</div>
-                                    <ul class="summary-effects-list">
-                                        <li v-for="(eff, idx) in item.effects" :key="idx">
-                                            <template v-for="segments in [renderEffectSegments(eff, item.source, { position: item.position, isDeputy: !!item.position })]">
-                                                <span v-for="(seg, sidx) in segments" :key="sidx" :class="{ 'inactive-segment': !seg.active }">
-                                                    {{ seg.text }}
-                                                </span>
-                                                <span v-if="segments.length > 0 && !segments.every(s => s.active)" class="inactive-tag">(未達成條件)</span>
-                                            </template>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </template>
-                    <div v-else class="empty-summary">
-                        <p>尚未選擇任何裝備</p>
-                        <p style="font-size: 0.8rem; opacity: 0.6;">點擊左側插槽開始配裝</p>
-                    </div>
-                </div>
+            <div class="simulator-right-panel">
+                <simulator-summary
+                    :show="isCompActive"
+                    :hero-state="heroState"
+                    :selected-equip="selectedEquip"
+                    :army-data="allHeroes"
+                    :all-skills="astData"
+                    :has-items="hasSelectedItems"
+                    :get-equipped-items-sync="getEquippedItemsSync"
+                    :get-hero-and-lieut-skills-sync="getHeroAndLieutSkillsSync"
+                    :get-hero-ast="getHeroAst"
+                    :render-segments="renderEffectSegments"
+                    :calculate-total-stats="calculateTotalStats" />
             </div>
         </div>
     `

@@ -227,6 +227,12 @@ body::after {
     padding: 0 2rem;
 }
 
+.container.full-width {
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+}
+
 /* Disclaimer Section */
 .disclaimer-container {
     background: rgba(25, 30, 35, 0.95);

@@ -33,6 +33,42 @@ window.Utils = {
     }
 };
 
+window.DataManager = (() => {
+    const cache = {};
+    const pending = {};
+
+    return {
+        async getJSON(url) {
+            const version = window.APP_CONFIG?.DATA_VERSION;
+            let fetchUrl = url;
+            if (version) {
+                // 如果原本就有參數則用 &，否則用 ?
+                const separator = url.includes('?') ? '&' : '?';
+                // 如果原本就有 v= 則替換，沒有則補上
+                if (url.includes('v=')) {
+                    fetchUrl = url.replace(/v=[^&]+/, `v=${version}`);
+                } else {
+                    fetchUrl = `${url}${separator}v=${version}`;
+                }
+            }
+
+            if (cache[url]) return JSON.parse(JSON.stringify(cache[url]));
+            if (pending[url]) return pending[url];
+            
+            pending[url] = fetch(fetchUrl).then(res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+            }).then(data => {
+                cache[url] = data;
+                delete pending[url];
+                return JSON.parse(JSON.stringify(data)); 
+            });
+
+            return pending[url];
+        }
+    };
+})();
+
 createApp({
     components: {
         'equipment-list': EquipmentListComponent,
@@ -50,13 +86,11 @@ createApp({
         // --- 數據讀取 ---
         const fetchData = async () => {
             try {
-                const catRes = await fetch('data/categories.json');
-                categories.value = await catRes.json();
+                categories.value = await window.DataManager.getJSON('data/categories.json');
 
                 const loadTasks = categories.value.map(async (cat) => {
                     try {
-                        const res = await fetch(`data/${cat.id}.json`);
-                        const data = await res.json();
+                        const data = await window.DataManager.getJSON(`data/${cat.id}.json`);
                         return data.map(val => {
                             if (typeof val === 'string') {
                                 return {
