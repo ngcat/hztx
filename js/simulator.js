@@ -986,7 +986,7 @@ const SimulatorComponent = {
         // 監聽 activeSlot 變化，切換插槽時重置排序
         watch(activeSlot, (newVal) => {
             if (newVal) {
-                sortStats.value = []; 
+                sortStats.value = [];
             }
         });
 
@@ -1003,7 +1003,7 @@ const SimulatorComponent = {
         const handleSlotClick = (slot) => {
             // 切換插槽時，關閉主將搜尋選單
             showHeroSearch.value = false;
-            
+
             activeSlot.value = (activeSlot.value === slot.id ? null : slot.id);
             if (activeSlot.value && (slot.id === 'rear_hero' || slot.id === 'front_hero')) {
                 activeHeroSlot.value = slot.id;
@@ -1045,38 +1045,16 @@ const SimulatorComponent = {
         });
 
         const handleUrlParams = () => {
-            const params = new URLSearchParams(window.location.search);
-
-            // 1. 處理新版 ?sim= (V2)
-            const encoded = params.get('sim');
-            if (encoded) {
+            const { sim, legacy } = SimSharing.parseUrlParams();
+            if (sim) {
                 try {
-                    const config = unpackConfigV2(encoded, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
-                    heroState.value.selectedHeroName = config.h;
-                    updateHeroAttributes(config.h);
-                    heroState.value.isAwakened = (config.s & 1) !== 0;
-                    heroState.value.isReincarnated = (config.s & 2) !== 0;
-                    const newEquip = { ...selectedEquip.value };
-                    Object.entries(config.e).forEach(([k, v]) => { newEquip[k] = v; });
-                    selectedEquip.value = newEquip;
+                    const config = SimSharing.unpackConfigV2(sim, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods, getStablePool);
+                    loadConfig(config);
                 } catch (e) { console.error("V2 Unpack failed", e); }
-                return;
-            }
-
-            // 2. 處理舊版 ?c= (V0)
-            const legacyEncoded = params.get('c');
-            if (legacyEncoded) {
+            } else if (legacy) {
                 try {
-                    const config = decompress(legacyEncoded, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
-                    if (config && config.h) {
-                        heroState.value.selectedHeroName = config.h;
-                        updateHeroAttributes(config.h);
-                        heroState.value.isAwakened = (config.s & 1) !== 0;
-                        heroState.value.isReincarnated = (config.s & 2) !== 0;
-                        const newEquip = { ...selectedEquip.value };
-                        Object.entries(config.e).forEach(([k, v]) => { newEquip[k] = v; });
-                        selectedEquip.value = newEquip;
-                    }
+                    const config = SimSharing.decompress(legacy, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
+                    loadConfig(config);
                 } catch (e) { console.error("Legacy V0 Unpack failed", e); }
             }
         };
@@ -1144,198 +1122,10 @@ const SimulatorComponent = {
             }
         };
 
-        // --- 全新位元流分享系統 (Base62 + Bitstream) ---
-        const SIM_BIT_CONFIG_V2 = {
-            VERSION: 4,
-            HERO_ID: 8,
-            HERO_TYPE: 2,
-            HERO_FLAGS: 3,
-            ITEM_ID: 9,
-            GOD_ID: 7,
-            EFFECT_IDX: 3
-        };
-
-
         const getStablePool = (slotId, poolSource = STABLE_POOLS) => {
             if (slotId === 'rear_hero' || slotId === 'front_hero') return poolSource.heroes;
             if (slotId === 'god') return poolSource.gods;
             return poolSource.equips;
-        };
-
-        const Base62 = {
-            chars: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-            encode(num) {
-                if (num === 0n) return "0";
-                let res = "";
-                while (num > 0n) {
-                    res = this.chars[Number(num % 62n)] + res;
-                    num = num / 62n;
-                }
-                return res;
-            },
-            decode(str) {
-                let res = 0n;
-                for (let i = 0; i < str.length; i++) {
-                    const idx = this.chars.indexOf(str[i]);
-                    if (idx === -1) throw new Error("Invalid Base62");
-                    res = res * 62n + BigInt(idx);
-                }
-                return res;
-            }
-        };
-
-        class BitWriter {
-            constructor() {
-                this.val = 0n;
-                this.offset = 0;
-            }
-            write(value, bits) {
-                this.val |= (BigInt(value) & ((1n << BigInt(bits)) - 1n)) << BigInt(this.offset);
-                this.offset += bits;
-            }
-            toString() {
-                return Base62.encode(this.val);
-            }
-        }
-
-        class BitReader {
-            constructor(str) {
-                this.val = Base62.decode(str);
-                this.offset = 0;
-            }
-            read(bits) {
-                const mask = (1n << BigInt(bits)) - 1n;
-                const res = Number((this.val >> BigInt(this.offset)) & mask);
-                this.offset += bits;
-                return res;
-            }
-        }
-
-        const SIM_BIT_SLOT_ORDER = [
-            'weapon', 'mount', 'book', 'treasure', 'token', 'hunyu',
-            'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p',
-            'rear_hero', 'front_hero', 'god'
-        ];
-
-        const getSlotPool = (slotId, items, gods, heroes) => {
-            if (slotId === 'rear_hero' || slotId === 'front_hero') {
-                return heroes; // 使用完整的英雄池 (已包含神靈)
-            }
-            if (slotId === 'god') {
-                return gods;
-            }
-            return items;
-        };
-
-        const packConfigV2 = (config, heroes, equips, gods) => {
-            const writer = new BitWriter();
-            writer.write(2, SIM_BIT_CONFIG_V2.VERSION); // Version 2
-
-            // 1. 打包主將 (Hero 專屬位)
-            const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
-            let hType = 0;
-            let cleanName = config.h || '關羽';
-            if (cleanName.startsWith('聖·')) { hType = 1; cleanName = cleanName.replace('聖·', ''); }
-            else if (cleanName.startsWith('神·')) { hType = 2; cleanName = cleanName.replace('神·', ''); }
-            const hIdx = heroes.findIndex(h => h.name === cleanName);
-            writer.write(hIdx === -1 ? (1 << hBits) - 1 : hIdx, hBits);
-            writer.write(hType, SIM_BIT_CONFIG_V2.HERO_TYPE);
-            writer.write(config.s || 0, SIM_BIT_CONFIG_V2.HERO_FLAGS);
-            writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX); // 預留空間
-
-            // 2. 按固定順序完整寫入所有插槽
-            SIM_BIT_SLOT_ORDER.forEach((key) => {
-                const pool = getStablePool(key, { heroes, gods, equips });
-                const val = config.e[key];
-
-                let name = typeof val === 'string' ? val : (val?.name || val?.n || (val?.item ? (val.item.name || val.item.n) : ''));
-
-                if (key === 'rear_hero' || key === 'front_hero') {
-                    let dType = 0;
-                    if (name && name.startsWith('聖·')) { dType = 1; name = name.replace('聖·', ''); }
-                    else if (name && name.startsWith('神·')) { dType = 2; name = name.replace('神·', ''); }
-                    writer.write(dType, SIM_BIT_CONFIG_V2.HERO_TYPE);
-                }
-
-                let id = -1;
-                if (name) {
-                    id = pool.findIndex(p => p.name === name);
-                    if (id === -1) {
-                        const clean = name.replace('聖·', '').replace('神·', '');
-                        id = pool.findIndex(p => p.name === clean);
-                    }
-                }
-
-                // 根據插槽類型選擇位元寬度
-                let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; 
-                if (key === 'god') currentBitWidth = SIM_BIT_CONFIG_V2.GOD_ID;
-                else if (key === 'rear_hero' || key === 'front_hero') currentBitWidth = SIM_BIT_CONFIG_V2.HERO_ID;
-
-                writer.write(id === -1 ? (1 << currentBitWidth) - 1 : id, currentBitWidth);
-
-                if (key.endsWith('_p')) {
-                    // _p 結尾寫入實際詞條索引
-                    writer.write(val?.i !== undefined ? val.i : (val?.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
-                } else if (key !== 'god') {
-                    // 其他非神靈位填入預設值 4
-                    writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX);
-                }
-            });
-
-            return writer.toString();
-        };
-
-        const unpackConfigV2 = (str, heroes, equips, gods) => {
-            const reader = new BitReader(str);
-            const version = reader.read(SIM_BIT_CONFIG_V2.VERSION);
-            if (version !== 2) throw new Error("Not V2");
-
-            // 1. 解析主將 (Hero 專屬位)
-            const hBits = SIM_BIT_CONFIG_V2.HERO_ID;
-            const hIdx = reader.read(hBits);
-            const hType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
-            const hFlags = reader.read(SIM_BIT_CONFIG_V2.HERO_FLAGS);
-            reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX); // 跳過預留位元
-
-            // 從傳入的池還原
-            let hName = (hIdx < heroes.length) ? heroes[hIdx].name : '關羽';
-            if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
-            else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
-            const config = { h: hName, s: hFlags, e: {} };
-
-            // 2. 按固定順序讀取所有插槽
-            SIM_BIT_SLOT_ORDER.forEach((key) => {
-                const pool = getStablePool(key, { heroes, gods, equips });
-
-                if (key === 'front_hero' || key === 'rear_hero') {
-                    const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
-                    const id = reader.read(SIM_BIT_CONFIG_V2.HERO_ID);
-                    reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX); // 跳過
-                    if (id !== (1 << SIM_BIT_CONFIG_V2.HERO_ID) - 1 && id < pool.length) {
-                        let dName = pool[id].name;
-                        if (dType === 1 && !dName.startsWith('聖·')) dName = '聖·' + dName;
-                        else if (dType === 2 && !dName.startsWith('神·')) dName = '神·' + dName;
-                        config.e[key] = dName;
-                    }
-                } else if (key === 'god') {
-                    const id = reader.read(SIM_BIT_CONFIG_V2.GOD_ID);
-                    if (id !== (1 << SIM_BIT_CONFIG_V2.GOD_ID) - 1 && id < pool.length) config.e[key] = pool[id];
-                } else {
-                    const id = reader.read(SIM_BIT_CONFIG_V2.ITEM_ID);
-                    const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
-
-                    if (id !== (1 << SIM_BIT_CONFIG_V2.ITEM_ID) - 1 && id < pool.length) {
-                        if (key.endsWith('_p')) {
-                            // _p 結尾恢復賦值
-                            config.e[key] = { item: pool[id], effectIdx: eId };
-                        } else {
-                            config.e[key] = pool[id];
-                        }
-                    }
-                }
-            });
-
-            return config;
         };
 
         const handleClickOutside = (e) => {
@@ -1359,152 +1149,9 @@ const SimulatorComponent = {
             }
         };
 
-        const hashCode = (str) => {
-            if (!str) return 0;
-            let hash = 5381;
-            for (let i = 0; i < str.length; i++) {
-                hash = (hash * 33) ^ str.charCodeAt(i);
-            }
-            return hash >>> 0;
-        };
 
-        const compress = (config) => {
-            const slotOrder = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu', 'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p', 'rear_p', 'front_p'];
-            const bytes = [];
 
-            // 1. 英雄 (24-bit / 3 bytes)
-            const hHash = config.h ? (hashCode(config.h) & 0xFFFFFF) : 0;
-            bytes.push((hHash >> 16) & 0xFF, (hHash >> 8) & 0xFF, hHash & 0xFF);
 
-            // 2. 狀態 (1 byte)
-            // bit 0: isAwakened, bit 1: isReincarnated, bit 2: isLieutenant
-            let status = 0;
-            if (config.s & 0x01) status |= 0x01;
-            if (config.s & 0x02) status |= 0x02;
-            if (config.s & 0x04) status |= 0x04;
-            bytes.push(status);
-
-            // 3. 裝備
-            slotOrder.forEach(slotId => {
-                const val = config.e[slotId];
-                if (!val) {
-                    const skip = (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p') ? 3 : 2;
-                    for (let i = 0; i < skip; i++) bytes.push(0);
-                    if (slotId.endsWith('_p')) bytes.push(0);
-                } else {
-                    const itemName = typeof val === 'string' ? val : (val.item ? val.item.name : val.n);
-
-                    if (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p') {
-                        const iHash = hashCode(itemName) & 0xFFFFFF;
-                        bytes.push((iHash >> 16) & 0xFF, (iHash >> 8) & 0xFF, iHash & 0xFF);
-                    } else {
-                        const iHash = hashCode(itemName) & 0xFFFF;
-                        bytes.push((iHash >> 8) & 0xFF, iHash & 0xFF);
-                    }
-
-                    if (slotId.endsWith('_p')) {
-                        const idx = val.effectIdx !== undefined ? val.effectIdx : (val.i || 0);
-                        bytes.push((idx + 1) & 0xFF);
-                    }
-                }
-            });
-
-            // 4. 副將 (放在最後以相容舊版本)
-            ['rear_hero', 'front_hero'].forEach(slot => {
-                const name = config.e[slot];
-                const hHash = name ? (hashCode(name) & 0xFFFFFF) : 0;
-                bytes.push((hHash >> 16) & 0xFF, (hHash >> 8) & 0xFF, hHash & 0xFF);
-            });
-
-            // 5. 神靈 (最後加入)
-            const gName = config.e['god'];
-            const gHash = gName ? (hashCode(typeof gName === 'string' ? gName : (gName.name || gName.n || '')) & 0xFFFFFF) : 0;
-            bytes.push((gHash >> 16) & 0xFF, (gHash >> 8) & 0xFF, gHash & 0xFF);
-
-            return btoa(String.fromCharCode(...bytes));
-        };
-
-        const decompress = (encoded, heroes, items, gods) => {
-            const binary = atob(encoded);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-
-            const slotOrder = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu', 'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p', 'rear_p', 'front_p'];
-            const catMap = { '神兵': 'weapon', '坐騎': 'mount', '寶典': 'book', '奇珍': 'treasure', '令符': 'token' };
-            const scopedMaps = { hero: {}, weapon: {}, mount: {}, book: {}, treasure: {}, token: {}, allEquip: {} };
-
-            // 使用傳入的資料建立查找表
-            (gods || []).forEach(g => {
-                scopedMaps.allEquip[hashCode(g.name) & 0xFFFFFF] = g;
-            });
-            (heroes || []).forEach(h => {
-                const baseName = h.name;
-                scopedMaps.hero[hashCode(baseName) & 0xFFFFFF] = baseName;
-                scopedMaps.hero[hashCode('神·' + baseName) & 0xFFFFFF] = '神·' + baseName;
-                scopedMaps.hero[hashCode('聖·' + baseName) & 0xFFFFFF] = '聖·' + baseName;
-            });
-            (items || []).forEach(i => {
-                const h16 = hashCode(i.name) & 0xFFFF;
-                const h24 = hashCode(i.name) & 0xFFFFFF;
-                const mappedCat = catMap[i.category];
-                if (mappedCat) {
-                    if (!scopedMaps[mappedCat]) scopedMaps[mappedCat] = {};
-                    scopedMaps[mappedCat][h16] = i;
-                }
-                scopedMaps.allEquip[h24] = i;
-            });
-
-            const config = { h: null, s: 0, e: {} };
-            let p = 0;
-
-            // 1. 讀取主將 (24-bit)
-            const hHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
-            if (hHash !== 0) config.h = scopedMaps.hero[hHash] || null;
-
-            // 2. 狀態 (1 byte)
-            config.s = bytes[p++];
-
-            // 3. 裝備
-            slotOrder.forEach(slotId => {
-                const iHash = (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p')
-                    ? (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++]
-                    : (bytes[p++] << 8) | bytes[p++];
-
-                if (iHash !== 0) {
-                    if (slotId === 'hunyu' || slotId === 'rear_p' || slotId === 'front_p') {
-                        config.e[slotId] = scopedMaps.allEquip[iHash];
-                    } else if (slotId.endsWith('_p')) {
-                        const effIdx = bytes[p++];
-                        const cat = slotId.replace('_p', '');
-                        const item = scopedMaps[cat] ? scopedMaps[cat][iHash] : scopedMaps.allEquip[iHash];
-                        if (item) config.e[slotId] = { item, effectIdx: effIdx - 1 };
-                    } else {
-                        const cat = slotId;
-                        config.e[slotId] = scopedMaps[cat] ? scopedMaps[cat][iHash] : scopedMaps.allEquip[iHash];
-                    }
-                } else if (slotId.endsWith('_p')) {
-                    p++;
-                }
-            });
-
-            // 4. 副將 (如果位元組足夠，則讀取)
-            if (p + 3 <= bytes.length) {
-                const rHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
-                if (rHash !== 0) config.e.rear_hero = scopedMaps.hero[rHash] || null;
-            }
-            if (p + 3 <= bytes.length) {
-                const fHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
-                if (fHash !== 0) config.e.front_hero = scopedMaps.hero[fHash] || null;
-            }
-
-            // 5. 神靈 (如果還有剩餘位元組)
-            if (p + 3 <= bytes.length) {
-                const gHash = (bytes[p++] << 16) | (bytes[p++] << 8) | bytes[p++];
-                if (gHash !== 0) config.e.god = scopedMaps.allEquip[gHash] || null;
-            }
-
-            return config;
-        };
 
         const loadConfig = (config) => {
             if (!config) return;
@@ -1517,16 +1164,13 @@ const SimulatorComponent = {
 
             // 2. 還原狀態
             const status = config.s || 0;
-            heroState.value.isAwakened = !!(status & 1);
-            heroState.value.isReincarnated = !!(status & 2);
-            heroState.value.isLieutenant = !!(status & 4);
+            heroState.value.isAwakened = (status & 1) !== 0;
+            heroState.value.isReincarnated = (status & 2) !== 0;
+            heroState.value.isLieutenant = (status & 4) !== 0;
 
-            // 3. 還原裝備 (直接賦值以保持引用一致)
             if (config.e) {
                 Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
-                Object.entries(config.e).forEach(([slotId, data]) => {
-                    selectedEquip.value[slotId] = data;
-                });
+                Object.entries(config.e).forEach(([k, v]) => { selectedEquip.value[k] = v; });
             }
         };
 
@@ -1546,39 +1190,7 @@ const SimulatorComponent = {
                 }
             });
 
-            const checkAndLoad = () => {
-                const urlParams = new URLSearchParams(window.location.search);
-                // 優先從 ?sim= 讀取，其次從舊有的 ?c= 讀取
-                const encoded = urlParams.get('sim') || urlParams.get('c');
-                if (encoded) {
-                    const target = decodeURIComponent(encoded.replace(/ /g, '+'));
-                    const unwatch = watch(
-                        [() => props.allItems, allHeroes, allGods],
-                        ([items, heroes, gods]) => {
-                            if (items?.length && heroes?.length && gods?.length) {
-                                try {
-                                    // 嘗試 V2 (最新版)
-                                    try {
-                                        const configV2 = unpackConfigV2(target, heroes, items, gods);
-                                        loadConfig(configV2);
-                                        unwatch();
-                                        return;
-                                    } catch (e2) { }
 
-                                    const config = decompress(target, heroes, items, gods);
-                                    if (config) loadConfig(config);
-                                } catch (e) {
-                                    console.error('Share load error:', e);
-                                }
-                                unwatch();
-                            }
-                        },
-                        { immediate: true }
-                    );
-                }
-            };
-
-            checkAndLoad();
         });
 
         onUnmounted(() => {
@@ -1620,7 +1232,7 @@ const SimulatorComponent = {
                     else config.e[k] = typeof v === 'string' ? v : v.name;
                 });
                 try {
-                    const encoded = packConfigV2(config, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods);
+                    const encoded = SimSharing.packConfigV2(config, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods, getStablePool);
                     const url = new URL(window.location.origin + window.location.pathname);
                     url.searchParams.set('sim', encoded);
                     const shareUrl = url.toString();
