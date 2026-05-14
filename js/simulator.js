@@ -665,19 +665,17 @@ const SimulatorComponent = {
         };
 
         const handleClickOutside = (e) => {
-            if (activeSlot.value) {
-                const isPopover = e.target.closest('.slot-search-popover');
-                const isSlot = e.target.closest('.equip-slot');
-                if (!isPopover && !isSlot) {
-                    activeSlot.value = null;
-                    slotSearchQuery.value = '';
-                }
+            // 如果點擊的是任何一種彈窗內部，直接跳過關閉邏輯
+            if (e.target.closest('.slot-search-popover')) return;
+
+            if (activeSlot.value && !e.target.closest('.equip-slot')) {
+                activeSlot.value = null;
+                slotSearchQuery.value = '';
             }
             if (showHeroSearch.value) {
-                const isHeroPopover = e.target.closest('.hero-search-popover');
                 const isHeroTrigger = e.target.closest('.current-hero-display');
                 const isLieutSlot = e.target.closest('.equip-slot.rear_hero') || e.target.closest('.equip-slot.front_hero');
-                if (!isHeroPopover && !isHeroTrigger && !isLieutSlot) {
+                if (!isHeroTrigger && !isLieutSlot) {
                     showHeroSearch.value = false;
                     heroSearchQuery.value = '';
                     activeHeroSlot.value = null;
