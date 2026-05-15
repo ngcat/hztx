@@ -14,7 +14,7 @@ window.SimLogic = (() => {
     const hasIdentityMatch = (traits, requiredIds) => {
         if (!requiredIds || requiredIds.length === 0) return true;
         const traitSet = traits instanceof Set ? traits : new Set(traits);
-        
+
         return requiredIds.some(req => {
             if (req === '全才') return traitSet.has('武將') && traitSet.has('文官');
             return traitSet.has(req);
@@ -199,6 +199,33 @@ window.SimLogic = (() => {
             if (isActive && (cond.awakened === true || cond.isAwakened === true) && !state.isAwakened) isActive = false;
             if (isActive && (cond.reincarnated === true || cond.isReincarnated === true) && !state.isReincarnated) isActive = false;
 
+            if (isActive && cond.combat) {
+                const s = state.combat;
+                const combatReqs = typeof cond.combat === 'string' ? { [cond.combat]: true } : cond.combat;
+                let match = true;
+
+                for (const [name, expectedVal] of Object.entries(combatReqs)) {
+                    let currentVal = undefined;
+                    let searchKey = name;
+
+                    if (s) {
+                        // 遍歷所有分組找 Key (目前主要在「對戰環境」中)
+                        for (const group of Object.values(s)) {
+                            if (group && typeof group === 'object' && group[searchKey] !== undefined) {
+                                currentVal = group[searchKey];
+                                break;
+                            }
+                        }
+                    }
+
+                    if (currentVal !== expectedVal) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (!match) isActive = false;
+            }
+
             if (isActive && cond.position && cond.position.length > 0) {
                 if (!cond.position.includes(context.position)) isActive = false;
             }
@@ -240,14 +267,49 @@ window.SimLogic = (() => {
                 if (multiplier <= 0) isActive = false;
             }
 
-            if (isActive && cond.skill) {
-                Object.entries(cond.skill).forEach(([skillName, config]) => {
-                    if (config.mode === 'multiplier') {
-                        const level = globalLevels[skillName] || 0;
-                        multiplier *= Math.floor(level / (config.count || 1));
+            if (isActive && cond.range) {
+                let rangeMultiplierSum = 0;
+                let hasMultiplier = false;
+
+                for (const [skillName, req] of Object.entries(cond.range)) {
+                    if (!isActive) break;
+
+                    // 1. 獲取當前數值
+                    let level = 0;
+                    if (state.range) {
+                        for (const group of Object.values(state.range)) {
+                            if (group && typeof group === 'object' && group[skillName] !== undefined) {
+                                level = group[skillName];
+                                break;
+                            }
+                        }
                     }
-                });
-                if (multiplier <= 0) isActive = false;
+
+                    // 2. 進行判定
+                    if (typeof req === 'number') {
+                        if (level < req) isActive = false;
+                    } else if (req && typeof req === 'object') {
+                        if (req.mode === 'multiplier') {
+                            // 倍率模式：累加級數
+                            hasMultiplier = true;
+                            rangeMultiplierSum += Math.floor(level / (req.count || 1));
+                        } else if (req.op) {
+                            // 運算子模式：AND 判定
+                            const val = req.val;
+                            if (req.op === '>=') { if (level < val) isActive = false; }
+                            else if (req.op === '<=') { if (level > val) isActive = false; }
+                            else if (req.op === '>') { if (level <= val) isActive = false; }
+                            else if (req.op === '<') { if (level >= val) isActive = false; }
+                            else if (req.op === '==') { if (level !== val) isActive = false; }
+                        }
+                    }
+                }
+
+                // 3. 統一套用倍率
+                if (isActive && hasMultiplier) {
+                    multiplier *= rangeMultiplierSum;
+                    if (multiplier <= 0) isActive = false;
+                }
             }
         }
         return { active: isActive, multiplier };
@@ -261,7 +323,7 @@ window.SimLogic = (() => {
 
         const results = { words: [], totalStats: {}, hasLinkage: false };
         const itemAst = getHeroAst(sourceItemName, astData) || astData[sourceItemName];
-        
+
         if (itemAst) {
             let astEntries = null;
             let effIdx = options.effIdx;
@@ -344,8 +406,11 @@ window.SimLogic = (() => {
                                     const val = v === null ? null : v * multiplier;
                                     let finalKey = sk;
                                     if (entry.cond) {
-                                        const combatRound = entry.cond.combat?.[0] || entry.cond.phase?.[0];
-                                        if (combatRound) finalKey = `__C:${combatRound}__${finalKey}`;
+                                        const combatRound = Array.isArray(entry.cond.phase) ? entry.cond.phase[0] : null;
+
+                                        if (combatRound !== null && combatRound !== undefined) {
+                                            finalKey = `__C:${combatRound}__${finalKey}`;
+                                        }
                                         if (entry.cond.position && entry.cond.position[0]) finalKey = `__P:${entry.cond.position[0]}__${finalKey}`;
                                     }
                                     if (val === null) wordStats[sk] = null;

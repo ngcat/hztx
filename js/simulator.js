@@ -45,8 +45,62 @@ const SimulatorComponent = {
             'token_p': null
         });
 
+        const STATES_CONFIG = {
+            combat: {
+                '對戰環境': {
+                    '對宿敵': false,
+                    '國戰攻城': false,
+                    '國戰守城': false,
+                    '兵力小於對手': false,
+                    '我方有不良狀態': false,
+                    '敵方有不良狀態': false
+                }
+            },
+            range: {
+                30: {
+                    // 英雄
+                    '萬箭': 0, '武聖': 0, '無雙': 0, '離間': 0, '落雷': 0, '傾國': 0, '鼓舞': 0, '奇策': 0,
+                    '乾坤': 0, '金剛': 0, '悲歌': 0, '亂舞': 0, '業火': 0, '天命': 0, '福佑': 0, '巨象': 0,
+                    '攻心': 0, '衝陣': 0, '死鬥': 0, '槍王': 0, '幻術': 0, '龍怒': 0, '冰河': 0, '勾魂': 0,
+                    '聖甲': 0, '障毒': 0, '霸君': 0, '仙音': 0, '兩儀': 0, '四象': 0,
+                    // 步兵
+                    '盾牆': 0, '激戰': 0, '堅守': 0, '衝鋒': 0, '反擊': 0, '裂甲': 0, '陷陣': 0, '蓄勢': 0,
+                    '逆刃': 0, '警覺': 0, '投戟': 0, '戰壕': 0,
+                    // 騎兵
+                    '鐵蹄': 0, '奔襲': 0, '不屈': 0, '突擊': 0, '捨身': 0, '剛毅': 0, '合圍': 0, '切割': 0,
+                    '戮塵': 0, '騎胄': 0, '擲矛': 0, '逸跡': 0,
+                    // 方士
+                    '罡氣': 0, '蝕甲': 0, '疾風': 0, '地刺': 0, '咒印': 0, '鬼影': 0, '神光': 0, '血瞳': 0,
+                    '星隕': 0, '石膚': 0, '陷阱': 0,
+                    // 弓兵
+                    '強弩': 0, '閃避': 0, '回射': 0, '火箭': 0, '金汁': 0, '齊射': 0, '輪射': 0, '破空': 0,
+                    '焱雨': 0, '掩蔽': 0, '落月': 0,
+                    // 輔助
+                    '策略': 0, '暴烈': 0, '軍略': 0, '誘敵': 0, '增員': 0, '擴編': 0, '剛體': 0, '靈敏': 0,
+                    '狂骨': 0, '博聞': 0, '仁義': 0, '推演': 0, '殺意': 0, '株連': 0, '集智': 0, '退避': 0,
+                    '急救': 0, '無懈': 0, '遁甲': 0, '洞鑒': 0, '凶煞': 0, '折衝': 0, '重生': 0, '鷹視': 0,
+                    '復仇': 0, '細作': 0,
+                },
+                20: {
+                    // 內政
+                    '築城': 0, '行軍': 0, '富豪': 0, '農耕': 0, '尋礦': 0, '育林': 0, '口才': 0, '豪傑': 0, '商賈': 0,
+                    '統御類技能數量': 0
+                },
+                180: {
+                    '陣法等級總數': 0
+                },
+                11: {
+                    '勇武': 0, '才學': 0, '兵法': 0, '修養': 0, '騎兵高級技能數量': 0
+                },
+                100: {
+                    '兵力比例': 100
+                }
+            }
+        };
+
         const heroSearchQuery = ref('');
         const showHeroSearch = ref(false);
+        const showAdvanced = ref(false);
         const activeHeroSlot = ref(null); // 'main', 'rear_hero', 'front_hero'
 
         const heroState = ref({
@@ -57,7 +111,8 @@ const SimulatorComponent = {
             isAwakened: false,
             isReincarnated: false,
             isLieutenant: false,
-            fullCategory: ''
+            fullCategory: '',
+            ...JSON.parse(JSON.stringify(STATES_CONFIG))
         });
 
         const allHeroes = ref([]);
@@ -379,6 +434,61 @@ const SimulatorComponent = {
 
         // --- 輔助函數 ---
 
+        // 計算當前裝備中涉及到的技能條件，用於動態顯示進階面板
+        const relevantSkills = computed(() => {
+            const skills = new Set(['兵力比例']); // 預設始終包含兵力比例
+            const equippedItems = getEquippedItemsSync(selectedEquip.value);
+
+            // 1. 掃描所有裝備中的 AST 條件
+            const equipSlotKeys = new Set([
+                'weapon', 'mount', 'book', 'treasure', 'token', 'hunyu',
+                'weapon_p', 'mount_p', 'book_p', 'treasure_p', 'token_p'
+            ]);
+
+            equippedItems.forEach(item => {
+                // 僅掃描屬於裝備類型的插槽
+                if (!equipSlotKeys.has(item.slotKey)) return;
+
+                const itemAst = getHeroAst(item.name, astData.value) || (astData.value && astData.value[item.name]);
+                if (!itemAst) return;
+
+                const processEntry = (entry) => {
+                    if (entry.cond && entry.cond.range) {
+                        Object.keys(entry.cond.range).forEach(s => skills.add(s));
+                    }
+                };
+
+                if (itemAst.effects) {
+                    if (item.isPartial) {
+                        // 神靈裝備：僅掃描當前選中的那條效果
+                        const activeEffList = itemAst.effects[item.effectIdx];
+                        if (activeEffList) activeEffList.forEach(processEntry);
+                    } else {
+                        // 普通裝備：掃描所有效果
+                        itemAst.effects.forEach(effList => effList.forEach(processEntry));
+                    }
+                }
+            });
+
+            return Array.from(skills).sort();
+        });
+
+        // 監聽相關技能清單，當裝備移除導致技能不再相關時，自動重置數值
+        watch(relevantSkills, (newSkills) => {
+            const skillSet = new Set(newSkills);
+            Object.keys(heroState.value.range).forEach(cap => {
+                Object.keys(heroState.value.range[cap]).forEach(sName => {
+                    // 如果該技能不再被任何裝備依賴，且不是始終顯示的項目，則重置
+                    if (!skillSet.has(sName)) {
+                        const defaultValue = STATES_CONFIG.range[cap] ? STATES_CONFIG.range[cap][sName] : 0;
+                        if (heroState.value.range[cap][sName] !== defaultValue) {
+                            heroState.value.range[cap][sName] = defaultValue;
+                        }
+                    }
+                });
+            });
+        }, { deep: true });
+
         const filteredSlotItems = (slot) => {
             const categoryName = slot.category || slot.name;
             let list = allItems.value;
@@ -653,6 +763,7 @@ const SimulatorComponent = {
             // 3. 如果還有剩餘裝備（且魂玉位尚未被核心裝備佔用），填入魂玉位
             if (!selectedEquip.value['hunyu']) {
                 const remaining = setItems.filter(item => !usedItems.has(item.name));
+                // 修正：移除誤插的邏輯
                 if (remaining.length > 0) {
                     selectedEquip.value['hunyu'] = remaining[0];
                 }
@@ -662,6 +773,20 @@ const SimulatorComponent = {
         const getStablePool = (slotId, poolSource = STABLE_POOLS) => {
             if (slotId === 'rear_hero' || slotId === 'front_hero') return poolSource.heroes;
             if (slotId === 'god') return poolSource.gods;
+            if (slotId === 'combat_keys') {
+                const keys = [];
+                Object.values(STATES_CONFIG.combat).forEach(group => {
+                    keys.push(...Object.keys(group));
+                });
+                return keys;
+            }
+            if (slotId === 'range_keys') {
+                const keys = [];
+                Object.values(STATES_CONFIG.range).forEach(group => {
+                    keys.push(...Object.keys(group));
+                });
+                return keys;
+            }
             return poolSource.equips;
         };
 
@@ -697,11 +822,51 @@ const SimulatorComponent = {
                 updateHeroAttributes(config.h);
             }
 
-            // 2. 還原狀態
+            // 2. 統一根據 STATES_CONFIG 重置所有狀態為預設值
+            ['combat', 'range'].forEach(type => {
+                Object.entries(STATES_CONFIG[type]).forEach(([groupName, group]) => {
+                    Object.entries(group).forEach(([key, defaultVal]) => {
+                        if (heroState.value[type] && heroState.value[type][groupName]) {
+                            heroState.value[type][groupName][key] = defaultVal;
+                        }
+                    });
+                });
+            });
+
+            // 3. 還原基礎狀態標記
             const status = config.s || 0;
             heroState.value.isAwakened = (status & 1) !== 0;
             heroState.value.isReincarnated = (status & 2) !== 0;
             heroState.value.isLieutenant = (status & 4) !== 0;
+
+            // 4. 還原戰鬥環境開關
+            if (config.st) {
+                if (Array.isArray(config.st)) {
+                    // 稀疏陣列模式 (只存開啟的 Key)
+                    config.st.forEach(keyName => {
+                        for (const gName in heroState.value.combat) {
+                            if (heroState.value.combat[gName][keyName] !== undefined) {
+                                heroState.value.combat[gName][keyName] = true;
+                            }
+                        }
+                    });
+                } else {
+                    // 舊版物件模式相容
+                    heroState.value.combat = Object.assign({}, heroState.value.combat, config.st);
+                }
+            }
+
+            // 5. 還原技能等級
+
+            if (config.sl) {
+                Object.entries(config.sl).forEach(([sName, val]) => {
+                    for (const cap in heroState.value.range) {
+                        if (heroState.value.range[cap][sName] !== undefined) {
+                            heroState.value.range[cap][sName] = val;
+                        }
+                    }
+                });
+            }
 
             if (config.e) {
                 Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
@@ -733,6 +898,7 @@ const SimulatorComponent = {
         });
 
         return {
+            STATES_CONFIG,
             activeSlot, slotSearchQuery, sortStats, selectedEquip, simulatorSlots,
             filteredSlotItems, activeSlotItems, selectItemForSlot, handleSearchBlur,
             clearAllEquip, hasSelectedItems,
@@ -747,20 +913,38 @@ const SimulatorComponent = {
                     if (effData.astEntry) localOptions.astEntry = effData.astEntry;
                     if (effData.effIdx !== undefined) localOptions.effIdx = effData.effIdx;
                 }
-                const context = getCurrentContext();
-                const interpretation = interpretEffectSync(effText, source, selectedEquip.value, context, localOptions);
+                const context = getCurrentContext(selectedEquip.value);
+                const interpretation = interpretEffectSync(effText, source, selectedEquip.value, context, localOptions, heroState.value, astData.value);
                 return interpretation.words.map(word => ({ text: word.text, active: word.isActive, isLinkage: word.isLinkage }));
             },
             allHeroes, updateHeroAttributes,
-            heroSearchQuery, showHeroSearch, filteredHeroes, selectHero,
+            heroSearchQuery, showHeroSearch, showAdvanced, relevantSkills, filteredHeroes, selectHero,
             handleSlotClick, getHeroImage, getEquippedItemsSync, getHeroAst, getHeroAndLieutSkillsSync, calculateTotalStats,
             soulJadeSlots, partialSlots,
             shareConfig() {
                 const config = {
                     h: heroState.value.selectedHeroName,
-                    s: (heroState.value.isAwakened ? 1 : 0) | (heroState.value.isReincarnated ? 2 : 0),
+                    s: (heroState.value.isAwakened ? 1 : 0) | (heroState.value.isReincarnated ? 2 : 0) | (heroState.value.isLieutenant ? 4 : 0),
+                    st: [], // 稀疏儲存開啟的狀態
+                    sl: {}, // 稀疏儲存技能等級
                     e: {}
                 };
+
+                // 1. 紀錄開啟的戰場狀態
+                for (const group of Object.values(heroState.value.combat)) {
+                    for (const [key, val] of Object.entries(group)) {
+                        if (val === true) config.st.push(key);
+                    }
+                }
+
+                // 2. 紀錄非預設的技能等級 (只要非 0 則紀錄，避免未來預設值變動導致數據遺失)
+                for (const group of Object.values(heroState.value.range)) {
+                    for (const [key, val] of Object.entries(group)) {
+                        if (val !== 0) {
+                            config.sl[key] = val;
+                        }
+                    }
+                }
                 Object.entries(selectedEquip.value).forEach(([k, v]) => {
                     if (!v) return;
                     if (k.endsWith('_p')) config.e[k] = { n: v.item.name, i: v.effectIdx };
@@ -824,6 +1008,47 @@ const SimulatorComponent = {
                             <label style="cursor: pointer; display: flex; align-items: center; gap: 5px; color: var(--primary-gold); font-size: 0.9rem; margin-left: 10px;">
                                 <input type="checkbox" v-model="heroState.isReincarnated" style="accent-color: var(--primary-gold); width: 16px; height: 16px;"> 已輪迴
                             </label>
+                        </div>
+                        <div style="margin-left: auto;">
+                            <button class="action-btn" @click="showAdvanced = !showAdvanced" style="font-size: 0.8rem; padding: 4px 12px; background: rgba(212, 175, 55, 0.1); border: 1px solid rgba(212, 175, 55, 0.2);">
+                                <i :class="showAdvanced ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i> 進階條件
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 進階面板 -->
+                    <div v-if="showAdvanced" class="advanced-panel" style="margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 8px;">
+                        <!-- 第一部分：狀態開關 (動態分類) -->
+                        <div style="display: flex; gap: 30px; margin-bottom: 25px; border-bottom: 1px solid rgba(212, 175, 55, 0.2); padding-bottom: 20px;">
+                            <div v-for="(group, groupName) in STATES_CONFIG.combat" :key="groupName"
+                                :style="{ flex: 1, paddingRight: '15px', borderRight: '1px solid rgba(212, 175, 55, 0.1)' }">
+                                <label style="font-size: 0.9rem; color: var(--primary-gold); font-weight: bold; display: block; margin-bottom: 10px;">{{ groupName }}</label>
+                                <div style="display: flex; gap: 10px 15px; flex-wrap: wrap;">
+                                    <label v-for="(val, s) in group" :key="s"
+                                        style="cursor: pointer; display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.8); font-size: 0.85rem; min-width: 60px;">
+                                        <input type="checkbox" v-model="heroState.combat[groupName][s]" 
+                                            style="accent-color: var(--primary-gold); width: 14px; height: 14px;"> {{ s }}
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 第二部分：特定技能等級 (動態顯示相關技能) -->
+                        <div v-if="relevantSkills.length > 0" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px 30px; margin-bottom: 15px;">
+                            <template v-for="(group, cap) in heroState.range" :key="cap">
+                                <template v-for="sName in relevantSkills" :key="sName">
+                                    <div v-if="group.hasOwnProperty(sName)" style="display: flex; flex-direction: column; gap: 4px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <label style="font-size: 0.85rem; color: rgba(255,255,255,0.6);">{{ sName }}</label>
+                                            <span style="font-size: 0.85rem; color: var(--primary-gold); font-weight: bold; font-family: monospace;">{{ group[sName] }}</span>
+                                        </div>
+                                        <input type="range" v-model.number="group[sName]" min="0" :max="cap"
+                                            style="width: 100%; accent-color: var(--primary-gold); height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none;">
+                                    </div>
+                                </template>
+                            </template>
+                        </div>
+                        <div v-else style="text-align: center; color: rgba(255,255,255,0.3); font-size: 0.85rem; padding: 10px;">
+                            當前配裝無特定技能觸發條件
                         </div>
                     </div>
                 </div>

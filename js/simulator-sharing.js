@@ -68,6 +68,7 @@ window.SimSharing = (() => {
     }
 
     const packConfigV2 = (config, heroes, equips, gods, getPoolFn) => {
+        // 區塊 1：基礎裝備 (固定長度邏輯)
         const writer = new BitWriter();
         writer.write(2, SIM_BIT_CONFIG_V2.VERSION); // Version 2
 
@@ -101,7 +102,7 @@ window.SimSharing = (() => {
                 if (id === -1) id = pool.findIndex(p => p.name === name.replace('聖·', '').replace('神·', ''));
             }
 
-            let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID; 
+            let currentBitWidth = SIM_BIT_CONFIG_V2.ITEM_ID;
             if (key === 'god') currentBitWidth = SIM_BIT_CONFIG_V2.GOD_ID;
             else if (key === 'rear_hero' || key === 'front_hero') currentBitWidth = SIM_BIT_CONFIG_V2.HERO_ID;
 
@@ -113,11 +114,42 @@ window.SimSharing = (() => {
                 writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX);
             }
         });
-        return writer.toString();
+
+        let result = writer.toString();
+
+        // 區塊 2：稀疏數據 (動態長度)
+        const hasStates = config.st && config.st.length > 0;
+        const hasSkills = config.sl && Object.keys(config.sl).length > 0;
+
+        if (hasStates || hasSkills) {
+            const writer2 = new BitWriter();
+
+            // 寫入狀態
+            const allCombatKeys = getPoolFn('combat_keys');
+            const activeStates = (config.st || []).map(k => allCombatKeys.indexOf(k)).filter(idx => idx !== -1);
+            writer2.write(activeStates.length, 6);
+            activeStates.forEach(idx => writer2.write(idx, 8));
+
+            // 寫入技能
+            const allRangeKeys = getPoolFn('range_keys');
+            const changedSkills = Object.entries(config.sl || {}).map(([k, v]) => {
+                return { idx: allRangeKeys.indexOf(k), val: v };
+            }).filter(item => item.idx !== -1);
+            writer2.write(changedSkills.length, 6);
+            changedSkills.forEach(item => {
+                writer2.write(item.idx, 8);
+                writer2.write(item.val, 8);
+            });
+
+            result += '-' + writer2.toString();
+        }
+
+        return result;
     };
 
     const unpackConfigV2 = (str, heroes, equips, gods, getPoolFn) => {
-        const reader = new BitReader(str);
+        const parts = str.split('-');
+        const reader = new BitReader(parts[0]);
         const version = reader.read(SIM_BIT_CONFIG_V2.VERSION);
         if (version !== 2) throw new Error("Not V2");
 
@@ -129,7 +161,7 @@ window.SimSharing = (() => {
         let hName = (hIdx < heroes.length) ? heroes[hIdx].name : '關羽';
         if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
         else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
-        const config = { h: hName, s: hFlags, e: {} };
+        const config = { h: hName, s: hFlags, e: {}, st: [], sl: {} };
 
         SIM_BIT_SLOT_ORDER.forEach((key) => {
             const pool = getPoolFn(key);
@@ -155,6 +187,30 @@ window.SimSharing = (() => {
                 }
             }
         });
+
+        // 解析區塊 2 (如果有)
+        if (parts[1]) {
+            const reader2 = new BitReader(parts[1]);
+            try {
+                const allCombatKeys = getPoolFn('combat_keys');
+                const stCount = reader2.read(6);
+                for (let i = 0; i < stCount; i++) {
+                    const idx = reader2.read(8);
+                    if (allCombatKeys[idx]) config.st.push(allCombatKeys[idx]);
+                }
+            } catch (e) { }
+
+            try {
+                const allRangeKeys = getPoolFn('range_keys');
+                const slCount = reader2.read(6);
+                for (let i = 0; i < slCount; i++) {
+                    const idx = reader2.read(8);
+                    const val = reader2.read(8);
+                    if (allRangeKeys[idx]) config.sl[allRangeKeys[idx]] = val;
+                }
+            } catch (e) { }
+        }
+
         return config;
     };
 
