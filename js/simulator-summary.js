@@ -12,10 +12,10 @@ const SimulatorSummary = {
         renderSegments: Function,
         calculateTotalStats: Function // 新增：傳入計算引擎
     },
-    
+
     setup(props) {
         const { ref, computed } = Vue;
-        
+
         const isOpen = ref(false);
         const activeTab = ref('effects'); // 'effects' | 'stats'
 
@@ -27,7 +27,7 @@ const SimulatorSummary = {
         const formatStatValue = (stat, val) => {
             if (val === null) return '';
             const isPercent = /提升|強度|減免|率|傷害|免傷|按比例/.test(stat);
-            const isRaw = /基礎|兵力|速度|武力|智力|統御|魅力|攻擊|防禦/.test(stat) && !isPercent;
+            const isRaw = /基礎|兵力|速度|武力|智力|統御|魅力|攻擊|防禦|次數|豁免/.test(stat) && !isPercent;
             const prefix = val > 0 ? '+' : '';
             return `${prefix}${val}${isRaw ? '' : '%'}`;
         };
@@ -35,8 +35,15 @@ const SimulatorSummary = {
         // --- 數據彙總邏輯 (從主程序遷移) ---
         const aggregation = computed(() => {
             if (!props.calculateTotalStats) return { core: {}, left: [], right: [] };
-            
+
             const totals = props.calculateTotalStats();
+            const phaseConfigs = [
+                { id: 'y1', keys: ['遠戰首回合', '遠戰回合'] },
+                { id: 'y2', keys: ['遠戰第二回合', '遠戰回合'] },
+                { id: 'j1', keys: ['近戰首回合', '近戰回合'] },
+                { id: 'j2', keys: ['近戰第二回合', '近戰回合'] }
+            ];
+
             const groups = {
                 core: { '武力': 0, '智力': 0, '魅力': 0, '統御': 0 },
                 left: [
@@ -47,12 +54,7 @@ const SimulatorSummary = {
                     { id: 'other', label: '其他', stats: [] },
                     { id: 'enemy', label: '敵方', stats: [] }
                 ],
-                right: [
-                    { id: 'y1', label: '遠戰首回合', stats: [] },
-                    { id: 'y2', label: '遠戰第二回合', stats: [] },
-                    { id: 'j1', label: '近戰首回合', stats: [] },
-                    { id: 'j2', label: '近戰第二回合', stats: [] }
-                ]
+                right: phaseConfigs.map(c => ({ id: c.id, label: c.keys[0], stats: [] }))
             };
 
             const baseTotals = {};
@@ -63,6 +65,9 @@ const SimulatorSummary = {
                     groups.core[stat] = val;
                     return;
                 }
+
+                // 如果是戰鬥階段屬性 (包含 __C:)，跳過左側統計，由右側 phaseConfigs 處理
+                if (stat.includes('__C:')) return;
 
                 let cleanName = stat;
                 let position = null;
@@ -103,22 +108,19 @@ const SimulatorSummary = {
                 pureBase[clean] = (pureBase[clean] || 0) + val;
             });
 
-            const combatConfigs = [
-                { id: 'y1', keys: ['遠戰回合', '遠戰首回合'] },
-                { id: 'y2', keys: ['遠戰回合', '遠戰第二回合'] },
-                { id: 'j1', keys: ['近戰回合', '近戰首回合'] },
-                { id: 'j2', keys: ['近戰回合', '近戰第二回合'] }
-            ];
 
-            combatConfigs.forEach(cfg => {
+            phaseConfigs.forEach(cfg => {
                 const group = groups.right.find(g => g.id === cfg.id);
                 const relevantStats = {};
                 Object.entries(totals).forEach(([stat, val]) => {
                     let clean = stat;
                     let found = false;
                     cfg.keys.forEach(k => {
-                        if (stat.includes(`__P:${k}__`)) {
-                            clean = stat.replace(`__P:${k}__`, '');
+                        const tag = `__C:${k}__`;
+                        if (stat.includes(tag)) {
+                            clean = stat.replace(tag, '');
+                            // 將位置標籤還原為文字 (例如 __P:前軍__ -> 前軍)
+                            clean = clean.replace(/__P:(.*?)__/, '$1');
                             found = true;
                         }
                     });
@@ -137,7 +139,7 @@ const SimulatorSummary = {
             const result = [];
             const equipConfig = props.selectedEquip;
             if (!equipConfig || !props.getHeroAndLieutSkillsSync) return result;
-            
+
             const extractedSkills = props.getHeroAndLieutSkillsSync(equipConfig);
 
             if (extractedSkills.hero_fate.length > 0) {
