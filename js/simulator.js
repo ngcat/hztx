@@ -112,9 +112,11 @@ const SimulatorComponent = {
             isReincarnated: false,
             isLieutenant: false,
             fullCategory: '',
+            equipQuality: {}, // 紀錄每個插槽的手動品質覆蓋
             ...JSON.parse(JSON.stringify(STATES_CONFIG))
         });
 
+        const slotRotations = ref({}); // 紀錄每個插槽標籤圖示的旋轉角度
         const allHeroes = ref([]);
         const allGods = ref([]);
         const astData = ref({});
@@ -683,8 +685,20 @@ const SimulatorComponent = {
             // 這樣才不會干擾神靈位從第一層跳轉到第二層的操作
         };
 
+        const resetQuality = () => {
+            heroState.value.equipQuality = {
+                'weapon': 4,
+                'mount': 4,
+                'book': 4,
+                'treasure': 4,
+                'token': 4,
+                'hunyu': 3
+            };
+        };
+
         const clearAllEquip = () => {
             Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
+            resetQuality();
         };
 
         const hasSelectedItems = computed(() => {
@@ -790,6 +804,55 @@ const SimulatorComponent = {
             return poolSource.equips;
         };
 
+        const getRarityClass = (item, slotId) => {
+            let release = -1;
+
+            // 1. 優先判斷手動覆蓋的品質
+            if (slotId && heroState.value.equipQuality[slotId] !== undefined) {
+                release = heroState.value.equipQuality[slotId];
+            }
+            // 2. 如果沒有覆蓋，則判斷裝備原始品質
+            else if (item) {
+                // 處理零件 slotId 結構 (可能有 .item)
+                const realItem = item.item || item;
+                if (realItem.release !== undefined) {
+                    release = realItem.release;
+                    if (Array.isArray(release)) release = release[release.length - 1];
+                }
+            }
+
+            if (release === -1) return '';
+
+            if (release >= 4) return 'rarity-gold';
+            if (release >= 3) return 'rarity-purple';
+            if (release >= 2) return 'rarity-blue';
+            if (release >= 1) return 'rarity-green';
+            return 'rarity-white';
+        };
+
+        const cycleQuality = (slotId) => {
+            // 神靈與連攜位不需要手動調整品質
+            if (slotId === 'god' || slotId.endsWith('_p')) return;
+
+            const item = selectedEquip.value[slotId];
+            const realItem = (item && item.item) ? item.item : item;
+
+            let current = heroState.value.equipQuality[slotId];
+            if (current === undefined) {
+                // 初始抓取，若無數據則從白色(0)開始
+                current = 0;
+            }
+
+            // 判定該裝備支援的最高品質
+            let maxQ = 4;
+            if (realItem && realItem.name && astData.value[realItem.name] && astData.value[realItem.name].effects) {
+                maxQ = Math.max(0, astData.value[realItem.name].effects.length - 1);
+            }
+
+            heroState.value.equipQuality[slotId] = (current + 1) > maxQ ? 0 : (current + 1);
+            slotRotations.value[slotId] = (slotRotations.value[slotId] || 0) + 180;
+        };
+
         const handleClickOutside = (e) => {
             // 如果點擊的是任何一種彈窗內部，直接跳過關閉邏輯
             if (e.target.closest('.slot-search-popover')) return;
@@ -872,6 +935,13 @@ const SimulatorComponent = {
                 Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
                 Object.entries(config.e).forEach(([k, v]) => { selectedEquip.value[k] = v; });
             }
+
+            // 6. 還原手動品質設定
+            if (config.q) {
+                Object.entries(config.q).forEach(([k, v]) => {
+                    heroState.value.equipQuality[k] = v;
+                });
+            }
         };
 
         // 監聽裝備變化，用於導航提醒
@@ -881,6 +951,9 @@ const SimulatorComponent = {
 
         onMounted(() => {
             window.addEventListener('mousedown', handleClickOutside, true);
+
+            // 初始化品質預設值
+            resetQuality();
 
             // 瀏覽器關閉/重新整理提醒
             window.addEventListener('beforeunload', (e) => {
@@ -904,7 +977,7 @@ const SimulatorComponent = {
             clearAllEquip, hasSelectedItems,
             statAggregation: null, // 已遷移至 Summary 組件
             allSets, applySet,
-            heroState,
+            heroState, getRarityClass, cycleQuality, slotRotations,
             renderEffectSegments(effData, source = null, options = {}) {
                 if (!effData) return [];
                 const effText = typeof effData === 'string' ? effData : effData.text;
@@ -949,6 +1022,12 @@ const SimulatorComponent = {
                     if (!v) return;
                     if (k.endsWith('_p')) config.e[k] = { n: v.item.name, i: v.effectIdx };
                     else config.e[k] = typeof v === 'string' ? v : v.name;
+
+                    // 3. 紀錄品質設定 (若有手動覆蓋則紀錄，否則可不記或由分享邏輯處理)
+                    if (heroState.value.equipQuality[k] !== undefined) {
+                        if (!config.q) config.q = {};
+                        config.q[k] = heroState.value.equipQuality[k];
+                    }
                 });
                 try {
                     const encoded = SimSharing.packConfigV2(config, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods, getStablePool);
@@ -1053,10 +1132,21 @@ const SimulatorComponent = {
                     </div>
                 </div>
                 <div class="simulator-layout">
+                    <div class="simulator-hint">
+                        <i class="fas fa-info-circle"></i> 點擊裝備標籤可調整品質
+                    </div>
                     <div class="equip-linear-wrapper">
                         <div v-for="slot in simulatorSlots" :key="slot.id" :class="['equip-slot', slot.id, { 'active': activeSlot === slot.id }]">
-                            <div class="slot-label">{{ slot.name }}</div>
-                            <div class="slot-card" @click="showHeroSearch = false; activeSlot = (activeSlot === slot.id ? null : slot.id)">
+                            <div class="slot-label" 
+                                 :class="getRarityClass(selectedEquip[slot.id], slot.id)"
+                                 @click="cycleQuality(slot.id)"
+                                 style="cursor: pointer;">
+                                 {{ slot.name }}
+                                 <i class="fas fa-sync-alt" :style="{ transform: 'rotate(' + (slotRotations[slot.id] || 0) + 'deg)' }"></i>
+                            </div>
+                            <div class="slot-card" 
+                                 :class="getRarityClass(selectedEquip[slot.id], slot.id)"
+                                 @click="handleSlotClick(slot)">
                                 <template v-if="selectedEquip[slot.id]">
                                     <div class="full-equip-display">
                                         <img :src="'img/' + selectedEquip[slot.id].image" :alt="selectedEquip[slot.id].name" @error="$event.target.src = 'img/unknown.png'">
@@ -1087,10 +1177,17 @@ const SimulatorComponent = {
 
                     <div class="equip-linear-wrapper souljade-row" style="margin-top: 10px; border-top: 1px solid rgba(212, 175, 55, 0.1); padding-top: 25px;">
                         <div v-for="slot in soulJadeSlots" :key="slot.id" :class="['equip-slot', slot.id, { 'active': activeSlot === slot.id }]">
-                            <div class="slot-label">{{ slot.name }}</div>
-                            <div class="slot-card" @click="handleSlotClick(slot)">
-                                <div v-if="slot.id === 'hunyu'" class="slot-badge" style="background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white;">3合魂玉</div>
-                                <div v-else-if="slot.id === 'god'" class="slot-badge">6合神靈</div>
+                            <div class="slot-label" 
+                                 :class="slot.id === 'hunyu' ? getRarityClass(selectedEquip[slot.id], slot.id) : ''"
+                                 @click="slot.id === 'hunyu' ? cycleQuality(slot.id) : null"
+                                 :style="{ cursor: slot.id === 'hunyu' ? 'pointer' : 'default' }">
+                                 {{ slot.name }}
+                                 <i v-if="slot.id === 'hunyu'" class="fas fa-sync-alt" :style="{ transform: 'rotate(' + (slotRotations[slot.id] || 0) + 'deg)' }"></i>
+                             </div>
+                            <div class="slot-card" 
+                                 :class="slot.id === 'hunyu' ? getRarityClass(selectedEquip[slot.id], slot.id) : ''"
+                                 @click="handleSlotClick(slot)">
+                                <div v-if="slot.id === 'god'" class="slot-badge">6合神靈</div>
                                 <div v-else-if="slot.badge" class="slot-badge">{{ slot.badge }}</div>
                                 
                                 <!-- 副將英雄顯示 -->
@@ -1110,9 +1207,9 @@ const SimulatorComponent = {
                                          @click.stop="selectedEquip[slot.id] = null">×</div>
                                 </template>
 
-                                <!-- 魂玉顯示 -->
+                                <!-- 魂玉與基本裝備統一使用同一組 HTML -->
                                 <template v-else-if="selectedEquip[slot.id]">
-                                    <div class="full-equip-display">
+                                    <div class="full-equip-display" :class="getRarityClass(selectedEquip[slot.id], slot.id)">
                                         <img :src="'img/' + selectedEquip[slot.id].image" :alt="selectedEquip[slot.id].name" @error="$event.target.src = 'img/unknown.png'">
                                         <div class="slot-item-name">{{ selectedEquip[slot.id].name }}</div>
                                     </div>

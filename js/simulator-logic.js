@@ -2,10 +2,12 @@
  * 模擬器核心運算與 AST 解析邏輯
  */
 window.SimLogic = (() => {
-    // 預設等級配置
-    const globalLevels = {
-        '陣法': 0,
-        '技能': 0
+    const qualityMap = {
+        '白色': 0,
+        '綠色': 1,
+        '藍色': 2,
+        '紫色': 3,
+        '金色': 4
     };
 
     /**
@@ -65,19 +67,40 @@ window.SimLogic = (() => {
         return items;
     };
 
+    // 輔助函式：獲取裝備的有效品質
+    const getEffectiveQuality = (item, state, astData) => {
+        const targetSlots = ['weapon', 'mount', 'book', 'treasure', 'token', 'hunyu', 'god'];
+        const slotKey = item.slotKey || '';
+
+        if (targetSlots.includes(slotKey) || slotKey.endsWith('_p')) {
+            // 根據 AST 中特效組數判定最高支援品質
+            let maxSupportedQuality = 4; // 預設金色
+            if (item.name && astData[item.name] && astData[item.name].effects) {
+                maxSupportedQuality = Math.max(0, astData[item.name].effects.length - 1);
+            }
+
+            let q = (state.equipQuality && state.equipQuality[slotKey] !== undefined)
+                ? state.equipQuality[slotKey]
+                : maxSupportedQuality;
+
+            return Math.min(Math.max(0, q), maxSupportedQuality);
+        }
+        return 0;
+    };
+
     /**
      * 獲取當前環境上下文 (用於判定條件)
      */
     const getCurrentContext = (equipConfig, state, astData) => {
-        if (!equipConfig || !state) return { setCounts: {}, equippedNames: new Set(), deputyNames: new Set(), mainTraits: new Set(), deputyTraits: new Set(), goldCount: 0 };
+        if (!equipConfig || !state) return { setCounts: {}, equippedNames: new Set(), deputyNames: new Set(), mainTraits: new Set(), deputyTraits: new Set() };
         const equippedItems = getEquippedItemsSync(equipConfig);
         const context = {
-            setCounts: {},
+            setCounts: {}, // { setName: [count_at_q0, count_at_q1, count_at_q2, count_at_q3, count_at_q4] }
+            itemQualities: {}, // { itemName: maxQuality }
             equippedNames: new Set(),
             deputyNames: new Set(),
             mainTraits: new Set(),
-            deputyTraits: new Set(),
-            goldCount: 0
+            deputyTraits: new Set()
         };
 
         const getHeroName = (h) => (h && typeof h === 'object' ? h.name : h);
@@ -115,15 +138,27 @@ window.SimLogic = (() => {
             }
         });
 
-        const normalItems = equippedItems.filter(item => {
-            return !(item.effects || []).some(eff => typeof eff === 'string' && eff.includes('裝備5件金色品質'));
-        });
-        context.goldCount = normalItems.filter(item => item.name && !item.name.includes('紫色')).length;
-        normalItems.forEach(item => {
-            if (item.sets) item.sets.split(' ').forEach(s => { if (s.trim()) context.setCounts[s.trim()] = (context.setCounts[s.trim()] || 0) + 1; });
-        });
-        equippedItems.forEach(item => { if (item.name) context.equippedNames.add(item.name); });
+        equippedItems.forEach(item => {
+            if (!item.name) return;
+            context.equippedNames.add(item.name);
+            item.quality = getEffectiveQuality(item, state, astData);
+            context.itemQualities[item.name] = Math.max(context.itemQualities[item.name] || 0, item.quality);
 
+            // 統計套裝件數 (用於部分條件判定)
+            if (item.sets) {
+                item.sets.split(' ').forEach(s => {
+                    const setName = s.trim();
+                    if (!setName) return;
+                    if (!context.setCounts[setName]) context.setCounts[setName] = [0, 0, 0, 0, 0];
+                    // 該品質以下的門檻全部計入
+                    for (let i = 0; i <= item.quality; i++) {
+                        context.setCounts[setName][i]++;
+                    }
+                });
+            }
+        });
+
+        context.equippedItems = equippedItems;
         return context;
     };
 
@@ -230,42 +265,62 @@ window.SimLogic = (() => {
                 if (!cond.position.includes(context.position)) isActive = false;
             }
 
-            if (isActive && cond.equip && cond.equip.length > 0) {
+            if (isActive && cond.equip && Array.isArray(cond.equip) && cond.equip.length > 0) {
                 if (!cond.equip.every(name => context.equippedNames && context.equippedNames.has(name))) isActive = false;
             }
 
             if (isActive && cond.set) {
-                const { name, count, mode } = cond.set;
+                const { name: setNames, count, mode, quality: reqQualityName, required } = cond.set;
+                const reqQuality = qualityMap[reqQualityName] || 0;
                 let currentCount = 0;
-                if (Array.isArray(name)) {
-                    name.forEach(s => { if (context.equippedNames && context.equippedNames.has(s)) currentCount++; });
-                } else if (typeof name === 'string') {
-                    currentCount = context.setCounts[name] || 0;
+
+                // 1. 檢查必備組件 (required)
+                if (required && Array.isArray(required)) {
+                    for (const rName of required) {
+                        const hasItem = context.equippedNames && context.equippedNames.has(rName);
+                        if (!hasItem) {
+                            isActive = false;
+                            break;
+                        }
+                        // 必備件必須符合品質門檻
+                        if (reqQualityName) {
+                            const q = context.itemQualities[rName] || 0;
+                            if (q < reqQuality) {
+                                isActive = false;
+                                break;
+                            }
+                        }
+                    }
                 }
-                if (mode === 'multiplier') {
-                    multiplier = Math.floor(currentCount / (count || 1));
-                    if (multiplier <= 0) isActive = false;
-                } else {
-                    if (currentCount < (count || 1)) isActive = false;
+
+                if (isActive) {
+                    // 2. 計算組件池中符合品質的數量
+                    if (Array.isArray(setNames)) {
+                        setNames.forEach(s => {
+                            if (context.equippedNames && context.equippedNames.has(s)) {
+                                const q = context.itemQualities[s] || 0;
+                                if (q >= reqQuality) {
+                                    currentCount++;
+                                }
+                            }
+                        });
+                    }
+
+                    const targetCount = count || 1;
+
+                    if (mode === 'multiplier') {
+                        multiplier = Math.floor(currentCount / targetCount);
+                        if (multiplier <= 0) isActive = false;
+                    } else {
+                        // requirement 模式：符合品質的組件數必須達到要求
+                        if (currentCount < targetCount) {
+                            isActive = false;
+                        }
+                    }
                 }
             }
 
-            if (isActive && cond.level) {
-                const type = cond.level.type;
-                const base = cond.level.base || 0;
-                const step = cond.level.step || 0;
-                const currentLevel = globalLevels[type] || 0;
-                if (currentLevel > 0) multiplier = base + (currentLevel - 1) * step;
-            }
 
-            // 處理等級或其他通用倍率
-            const mult = cond.multiplier || cond.level;
-            if (isActive && mult && mult.name) {
-                const { name, count } = mult;
-                const currentVal = globalLevels[name] || 0;
-                multiplier *= Math.floor(currentVal / (count || 1));
-                if (multiplier <= 0) isActive = false;
-            }
 
             if (isActive && cond.range) {
                 let rangeMultiplierSum = 0;
@@ -327,17 +382,25 @@ window.SimLogic = (() => {
         if (itemAst) {
             let astEntries = null;
             let effIdx = options.effIdx;
+            let isQualityActive = true;
 
             if (options.astEntry) {
                 astEntries = Array.isArray(options.astEntry) ? options.astEntry : [options.astEntry];
             } else if (itemAst.effects) {
-                if (effIdx === undefined) {
-                    const sourceItem = getEquippedItemsSync(equipConfig).find(i => i.name === sourceItemName || i.parentName === sourceItemName);
-                    if (sourceItem) {
-                        effIdx = sourceItem.isPartial ? (equipConfig[sourceItem.slotKey]?.effectIdx ?? 0) : (sourceItem.effects || []).indexOf(eff);
-                    }
+                // 優先使用傳入的物件，避免重複執行 getEquippedItemsSync
+                let sourceItem = options.sourceItem || getEquippedItemsSync(equipConfig).find(i => i.name === sourceItemName || i.parentName === sourceItemName);
+
+                if (effIdx === undefined && sourceItem) {
+                    effIdx = sourceItem.isPartial ? (equipConfig[sourceItem.slotKey]?.effectIdx ?? 0) : (sourceItem.effects || []).indexOf(eff);
                 }
-                if (effIdx !== undefined && effIdx >= 0 && itemAst.effects[effIdx]) astEntries = itemAst.effects[effIdx];
+
+                if (effIdx !== undefined && effIdx >= 0 && itemAst.effects[effIdx]) {
+                    astEntries = itemAst.effects[effIdx];
+
+                    // 優先使用傳入的品質門檻，否則才進行計算 (並加上 sourceItem 保護)
+                    const qLimit = options.qualityLimit ?? ((sourceItem && !sourceItem.isPartial) ? getEffectiveQuality(sourceItem, state, astData) : 4);
+                    if (effIdx > qLimit) isQualityActive = false;
+                }
             } else {
                 let allHeroEntries = [...(itemAst.fates || []), ...(itemAst.as_deputy || [])];
                 if (sourceItemName.includes('聖·')) allHeroEntries.push(...(itemAst.as_deputy_awaken2 || []));
@@ -355,9 +418,8 @@ window.SimLogic = (() => {
                     heroTraits.add('主將');
                 }
 
-                const sourceAst = getHeroAst(sourceItemName, astData);
-                if (sourceAst && sourceAst.slot) {
-                    sourceAst.slot.forEach(s => heroTraits.add(s));
+                if (itemAst.slot) {
+                    itemAst.slot.forEach(s => heroTraits.add(s));
                 } else {
                     const hCat = state.fullCategory || '';
                     [state.class, state.identity, state.gender, ...hCat.split(/\s+/).filter(Boolean)].forEach(t => heroTraits.add(t));
@@ -385,13 +447,15 @@ window.SimLogic = (() => {
                 };
 
                 astEntries.forEach((entry, idx) => {
-                    const { active: condActive, multiplier } = checkAstCondition(entry, {
+                    let { active: condActive, multiplier } = checkAstCondition(entry, {
                         ...context,
                         isDeputy: options.isDeputy,
                         position: options.position,
                         isItem: options.effIdx !== undefined,
                         wearerTraits: heroTraits
                     }, state);
+
+                    condActive = condActive && isQualityActive;
 
                     const wordStats = {};
                     let hasApplicableStats = false;
@@ -448,7 +512,7 @@ window.SimLogic = (() => {
         const totals = {};
         if (!equipConfig || !state || !astData) return totals;
         const context = getCurrentContext(equipConfig, state, astData);
-        const equippedItems = getEquippedItemsSync(equipConfig);
+        const equippedItems = context.equippedItems;
 
         const addStats = (totalStats) => {
             Object.keys(totalStats).forEach(k => {
@@ -460,6 +524,7 @@ window.SimLogic = (() => {
         // 1. 裝備統計
         const equipItems = equippedItems.filter(i => !i.slotKey.endsWith('_hero'));
         equipItems.forEach(item => {
+            const q = item.quality || 0;
             let effects = (item.effects || []).flat();
             if (item.slotKey === 'god') {
                 effects = effects.concat((item.mutation || []).flat(), (item.rage_cond || []).flat(), (item.spell || []).flat());
@@ -468,6 +533,8 @@ window.SimLogic = (() => {
                 const actualEffIdx = item.isPartial ? item.effectIdx : localIdx;
                 const { totalStats } = interpretEffectSync(eff, item.parentName || item.name, equipConfig, context, {
                     effIdx: actualEffIdx,
+                    sourceItem: item,      // 直接傳入物件，避免內部重複搜尋
+                    qualityLimit: q,       // 直接傳入已算的品質
                     isDeputy: state.isLieutenant
                 }, state, astData);
                 addStats(totalStats);
@@ -499,7 +566,6 @@ window.SimLogic = (() => {
     };
 
     return {
-        globalLevels,
         hasIdentityMatch,
         getHeroAst,
         getEquippedItemsSync,

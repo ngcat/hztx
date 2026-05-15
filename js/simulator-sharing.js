@@ -111,7 +111,8 @@ window.SimSharing = (() => {
             if (key.endsWith('_p')) {
                 writer.write(val?.i !== undefined ? val.i : (val?.effectIdx || 0), SIM_BIT_CONFIG_V2.EFFECT_IDX);
             } else if (key !== 'god') {
-                writer.write(4, SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                const qVal = (config.q && config.q[key] !== undefined) ? config.q[key] : 4;
+                writer.write(qVal, SIM_BIT_CONFIG_V2.EFFECT_IDX);
             }
         });
 
@@ -161,19 +162,20 @@ window.SimSharing = (() => {
         let hName = (hIdx < heroes.length) ? heroes[hIdx].name : '關羽';
         if (hType === 1 && !hName.startsWith('聖·')) hName = '聖·' + hName;
         else if (hType === 2 && !hName.startsWith('神·')) hName = '神·' + hName;
-        const config = { h: hName, s: hFlags, e: {}, st: [], sl: {} };
+        const config = { h: hName, s: hFlags, e: {}, st: [], sl: {}, q: {} };
 
         SIM_BIT_SLOT_ORDER.forEach((key) => {
             const pool = getPoolFn(key);
             if (key === 'front_hero' || key === 'rear_hero') {
                 const dType = reader.read(SIM_BIT_CONFIG_V2.HERO_TYPE);
                 const id = reader.read(SIM_BIT_CONFIG_V2.HERO_ID);
-                reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
+                const qVal = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
                 if (id !== (1 << SIM_BIT_CONFIG_V2.HERO_ID) - 1 && id < pool.length) {
                     let dName = pool[id].name;
                     if (dType === 1 && !dName.startsWith('聖·')) dName = '聖·' + dName;
                     else if (dType === 2 && !dName.startsWith('神·')) dName = '神·' + dName;
                     config.e[key] = dName;
+                    config.q[key] = qVal;
                 }
             } else if (key === 'god') {
                 const id = reader.read(SIM_BIT_CONFIG_V2.GOD_ID);
@@ -183,7 +185,10 @@ window.SimSharing = (() => {
                 const eId = reader.read(SIM_BIT_CONFIG_V2.EFFECT_IDX);
                 if (id !== (1 << SIM_BIT_CONFIG_V2.ITEM_ID) - 1 && id < pool.length) {
                     if (key.endsWith('_p')) config.e[key] = { item: pool[id], effectIdx: eId };
-                    else config.e[key] = pool[id];
+                    else {
+                        config.e[key] = pool[id];
+                        config.q[key] = eId;
+                    }
                 }
             }
         });

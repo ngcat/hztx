@@ -2158,7 +2158,8 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "紫色"
             }
           }
         }
@@ -2177,7 +2178,8 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -2326,11 +2328,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "紫色"
+            }
           }
         }
       ],
@@ -2348,11 +2351,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -2403,11 +2407,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "紫色"
+            }
           }
         }
       ],
@@ -2425,11 +2430,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -2695,7 +2701,8 @@
                 "武帝墨寶",
                 "武帝冠冕"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -2745,11 +2752,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "紫色"
+            }
           }
         }
       ],
@@ -2767,11 +2775,12 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "天罰杖"
-            ]
+              "required": [
+                "天罰杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -3453,11 +3462,12 @@
                 "青銅古盾",
                 "都天陣旗"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "刑天戰斧"
-            ]
+              "required": [
+                "刑天戰斧"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -3527,11 +3537,12 @@
                 "青銅古盾",
                 "都天陣旗"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "刑天戰斧"
-            ]
+              "required": [
+                "刑天戰斧"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -3601,11 +3612,12 @@
                 "青銅古盾",
                 "都天陣旗"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "刑天戰斧"
-            ]
+              "required": [
+                "刑天戰斧"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -3679,7 +3691,8 @@
                 "青銅古盾",
                 "都天陣旗"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -3757,7 +3770,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "白色"
             }
           }
         }
@@ -3775,7 +3789,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "綠色"
             }
           }
         }
@@ -3794,7 +3809,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "藍色"
             }
           }
         }
@@ -3823,7 +3839,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "白色"
             }
           }
         }
@@ -3841,7 +3858,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "綠色"
             }
           }
         }
@@ -3860,7 +3878,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "藍色"
             }
           }
         }
@@ -3889,7 +3908,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "白色"
             }
           }
         }
@@ -3907,7 +3927,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "綠色"
             }
           }
         }
@@ -3926,7 +3947,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "藍色"
             }
           }
         }
@@ -3955,7 +3977,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "白色"
             }
           }
         }
@@ -3973,7 +3996,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "綠色"
             }
           }
         }
@@ -3992,7 +4016,8 @@
                 "羽林令"
               ],
               "count": 1,
-              "mode": "multiplier"
+              "mode": "multiplier",
+              "quality": "藍色"
             }
           }
         }
@@ -6967,11 +6992,12 @@
                 "女媧壺",
                 "女媧石"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "女媧笙"
-            ]
+              "required": [
+                "女媧笙"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -7069,11 +7095,12 @@
                 "女媧壺",
                 "女媧石"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "女媧笙"
-            ]
+              "required": [
+                "女媧笙"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -7172,11 +7199,12 @@
                 "女媧壺",
                 "女媧石"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "女媧笙"
-            ]
+              "required": [
+                "女媧笙"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -7273,7 +7301,8 @@
                 "女媧壺",
                 "女媧石"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -9496,11 +9525,12 @@
                 "饕餮噬天鎧",
                 "饕餮裂天令"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "饕餮搏天杖"
-            ]
+              "required": [
+                "饕餮搏天杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -9589,11 +9619,12 @@
                 "饕餮噬天鎧",
                 "饕餮裂天令"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "饕餮搏天杖"
-            ]
+              "required": [
+                "饕餮搏天杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -9686,11 +9717,12 @@
                 "饕餮噬天鎧",
                 "饕餮裂天令"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "饕餮搏天杖"
-            ]
+              "required": [
+                "饕餮搏天杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -9779,7 +9811,8 @@
                 "饕餮噬天鎧",
                 "饕餮裂天令"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -9845,7 +9878,8 @@
                 "天象鼓",
                 "天庭律法"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -9923,7 +9957,8 @@
                 "青銅古盾",
                 "都天陣旗"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10001,7 +10036,8 @@
                 "玄山甲",
                 "軒轅幡"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10082,7 +10118,8 @@
                 "女媧壺",
                 "女媧石"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10160,7 +10197,8 @@
                 "伏羲煉妖葫",
                 "伏羲八卦令"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10238,7 +10276,8 @@
                 "神農造世鼎",
                 "神農五弦令"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10316,7 +10355,8 @@
                 "饕餮噬天鎧",
                 "饕餮裂天令"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -10691,11 +10731,12 @@
                 "亡魂枯骨戒",
                 "亡魂致命符"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "亡魂不朽杖"
-            ]
+              "required": [
+                "亡魂不朽杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -10786,11 +10827,12 @@
                 "亡魂枯骨戒",
                 "亡魂致命符"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "亡魂不朽杖"
-            ]
+              "required": [
+                "亡魂不朽杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -10877,11 +10919,12 @@
                 "亡魂枯骨戒",
                 "亡魂致命符"
               ],
-              "mode": "requirement"
-            },
-            "equip": [
-              "亡魂不朽杖"
-            ]
+              "required": [
+                "亡魂不朽杖"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -10972,7 +11015,8 @@
                 "亡魂枯骨戒",
                 "亡魂致命符"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -11055,7 +11099,8 @@
                 "亡魂枯骨戒",
                 "亡魂致命符"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -14006,9 +14051,14 @@
           "raw": "若我方英雄等級達到100級，戰鬥開始時額外發動【祖龍屏障】的機率+40%（裝備金色祖龍太阿後生效）",
           "stats": {},
           "cond": {
-            "equip": [
-              "祖龍太阿"
-            ]
+            "set": {
+              "count": 1,
+              "name": [
+                "祖龍太阿"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -14064,9 +14114,14 @@
           "raw": "若我方英雄等級達到110級，每次發動【祖龍屏障】時，可使敵方神靈怒氣-30（裝備金色祖龍太阿後生效）",
           "stats": {},
           "cond": {
-            "equip": [
-              "祖龍太阿"
-            ]
+            "set": {
+              "count": 1,
+              "name": [
+                "祖龍太阿"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -14481,7 +14536,9 @@
                 "武帝聖旨",
                 "武帝墨寶",
                 "武帝冠冕"
-              ]
+              ],
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -14614,7 +14671,8 @@
                 "祖龍冕旒",
                 "祖龍獸玦"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -15058,7 +15116,8 @@
                 "修羅鬼面甲",
                 "修羅幽冥旗"
               ],
-              "mode": "requirement"
+              "mode": "requirement",
+              "quality": "金色"
             }
           }
         }
@@ -15128,9 +15187,14 @@
           "raw": "若我方英雄等級達到120級，戰鬥開始時額外發動【祖龍屏障】的機率+40% (裝備金色祖龍太阿後生效)",
           "stats": {},
           "cond": {
-            "equip": [
-              "祖龍太阿"
-            ]
+            "set": {
+              "count": 1,
+              "name": [
+                "祖龍太阿"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
@@ -15187,9 +15251,14 @@
           "raw": "若我方英雄等級達到130級，【祖龍屏障】的抵禦傷害量+5000，且近戰首回合起始時，可額外發動【祖龍屏障】 (裝備金色祖龍太阿後生效)",
           "stats": {},
           "cond": {
-            "equip": [
-              "祖龍太阿"
-            ]
+            "set": {
+              "count": 1,
+              "name": [
+                "祖龍太阿"
+              ],
+              "mode": "requirement",
+              "quality": "金色"
+            }
           }
         }
       ]
