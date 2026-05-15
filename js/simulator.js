@@ -442,7 +442,8 @@ const SimulatorComponent = {
                         allEffects.forEach((eff, idx) => {
                             const result = interpretEffectSync(eff, item.name, tempEquip, {}, {
                                 quickScan: true,
-                                targetStats: sortStats.value
+                                targetStats: sortStats.value,
+                                effIdx: idx // 關鍵修正：必須傳入當前掃描的索引
                             });
                             effectAnalyses[idx] = result;
                             if (!result.isIrrelevant) {
