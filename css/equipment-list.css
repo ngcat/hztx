@@ -953,3 +953,17 @@
     background: var(--primary-gold);
     border-radius: 2px;
 }
+
+/* Progressive rendering sentinel & counter */
+.gallery-sentinel {
+    height: 1px;
+    grid-column: 1 / -1;
+}
+
+.gallery-count {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 1rem 0;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.85rem;
+}

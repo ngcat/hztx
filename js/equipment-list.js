@@ -55,7 +55,7 @@ const EquipmentListComponent = {
             </div>
 
             <div class="gallery">
-                <div v-for="(item, index) in filteredItems" :key="item.name + '-' + index" 
+                <div v-for="(item, index) in visibleItems" :key="item.name + '-' + index" 
                     :class="['card', { 'hero-card': item.group === 'hero' }]" @click="selectedItem = item">
                     <div :class="['tag', item.group === 'army' ? 'tag-army' : 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
                     <div class="release-tag" v-if="item.release !== undefined">{{ formatRelease(item.release) }}</div>
@@ -84,6 +84,8 @@ const EquipmentListComponent = {
                         </div>
                     </div>
                 </div>
+                <div ref="sentinel" class="gallery-sentinel"></div>
+                <div v-if="filteredItems.length > visibleItems.length" class="gallery-count">顯示 {{ visibleItems.length }} / {{ filteredItems.length }} 項</div>
             </div>
 
             <!-- Detail Modal -->
@@ -332,6 +334,9 @@ const EquipmentListComponent = {
         const upgradeFilter = ref('ALL');
 
         const selectedItem = ref(null);
+        const renderCount = ref(40);
+        const sentinel = ref(null);
+        let observer = null;
 
         // --- 重置過濾器 ---
         watch(() => props.category, () => {
@@ -447,11 +452,22 @@ const EquipmentListComponent = {
                     selectedItem.value = null;
                 }
             });
+            Vue.nextTick(() => {
+                const el = sentinel.value;
+                if (el) {
+                    observer = new IntersectionObserver(entries => {
+                        if (entries[0].isIntersecting && renderCount.value < filteredItems.value.length) {
+                            renderCount.value += 40;
+                        }
+                    }, { rootMargin: '300px' });
+                    observer.observe(el);
+                }
+            });
         });
 
         const { onUnmounted } = Vue;
         onUnmounted(() => {
-            // 已改用 popstate
+            if (observer) { observer.disconnect(); observer = null; }
         });
 
 
@@ -609,36 +625,17 @@ const EquipmentListComponent = {
                     return upgrades.includes(upgradeFilter.value);
                 });
             }
-            if (rarityFilter.value !== 'ALL') {
-                const filterVal = rarityFilter.value;
+            // P1: Merge category-based filters — single split per item
+            const catFilters = [];
+            if (rarityFilter.value !== 'ALL') catFilters.push(rarityFilter.value);
+            if (tagFilter.value !== 'ALL') catFilters.push(tagFilter.value.trim());
+            if (typeFilter.value !== 'ALL') catFilters.push(typeFilter.value);
+            if (frontFilter.value !== 'ALL') catFilters.push(frontFilter.value);
+            if (rearFilter.value !== 'ALL') catFilters.push(rearFilter.value);
+            if (catFilters.length) {
                 list = list.filter(item => {
                     const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    return cats.includes(filterVal);
-                });
-            }
-            if (tagFilter.value !== 'ALL') {
-                const filterVal = tagFilter.value.trim();
-                list = list.filter(item => {
-                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    return cats.includes(filterVal);
-                });
-            }
-            if (typeFilter.value !== 'ALL') {
-                list = list.filter(item => {
-                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    return cats.includes(typeFilter.value);
-                });
-            }
-            if (frontFilter.value !== 'ALL') {
-                list = list.filter(item => {
-                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    return cats.includes(frontFilter.value);
-                });
-            }
-            if (rearFilter.value !== 'ALL') {
-                list = list.filter(item => {
-                    const cats = item.category ? item.category.split(' ').map(c => c.trim()) : [];
-                    return cats.includes(rearFilter.value);
+                    return catFilters.every(f => cats.includes(f));
                 });
             }
 
@@ -664,6 +661,10 @@ const EquipmentListComponent = {
             }
             return list;
         });
+
+        const visibleItems = computed(() => filteredItems.value.slice(0, renderCount.value));
+        // Reset progressive render count on filter change
+        watch(filteredItems, () => { renderCount.value = 40; });
 
         const activityTable = computed(() => {
             if (!selectedItem.value || !selectedItem.value.table) return [];
@@ -694,7 +695,8 @@ const EquipmentListComponent = {
         return {
             searchQuery, mergeFilter, sourceFilter, typeFilter, setFilter, tagFilter, rarityFilter,
             frontFilter, rearFilter, upgradeFilter, selectedItem,
-            uniqueSources, uniqueSets, uniqueTags, uniqueUpgrades, uniqueReleases, filteredItems,
+            uniqueSources, uniqueSets, uniqueTags, uniqueUpgrades, uniqueReleases,
+            filteredItems, visibleItems, renderCount, sentinel,
             getCardTag, formatRelease, formatBitmask, selectedItem, activityTable,
             shareItem
         };
