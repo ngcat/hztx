@@ -807,8 +807,12 @@ const SimulatorComponent = {
         const getRarityClass = (item, slotId) => {
             let release = -1;
 
+            // 0. 針對連鎖位 (_p)，品質由選定的索引決定
+            if (slotId && slotId.endsWith('_p') && item && item.effectIdx !== undefined) {
+                release = item.effectIdx;
+            }
             // 1. 優先判斷手動覆蓋的品質
-            if (slotId && heroState.value.equipQuality[slotId] !== undefined) {
+            else if (slotId && heroState.value.equipQuality[slotId] !== undefined) {
                 release = heroState.value.equipQuality[slotId];
             }
             // 2. 如果沒有覆蓋，則判斷裝備原始品質
@@ -831,8 +835,19 @@ const SimulatorComponent = {
         };
 
         const cycleQuality = (slotId) => {
-            // 神靈與連攜位不需要手動調整品質
-            if (slotId === 'god' || slotId.endsWith('_p')) return;
+            // 神靈主位不需要手動調整品質
+            if (slotId === 'god') return;
+
+            // 針對連鎖位 (_p)，切換邏輯改為循環詞綴索引 (effectIdx)
+            if (slotId.endsWith('_p')) {
+                const val = selectedEquip.value[slotId];
+                if (val && val.item) {
+                    const maxQ = (val.item.effects || []).length - 1;
+                    val.effectIdx = (val.effectIdx + 1) > maxQ ? 0 : (val.effectIdx + 1);
+                    slotRotations.value[slotId] = (slotRotations.value[slotId] || 0) + 180;
+                }
+                return;
+            }
 
             const item = selectedEquip.value[slotId];
             const realItem = (item && item.item) ? item.item : item;
@@ -1237,13 +1252,22 @@ const SimulatorComponent = {
                         </div>
                     </div>
 
-                    <div class="equip-linear-wrapper" style="margin-top: 10px; border-top: 1px solid rgba(212, 175, 55, 0.1); padding-top: 25px;">
+                    <div class="equip-linear-wrapper souljade-row" style="margin-top: 10px; border-top: 1px solid rgba(212, 175, 55, 0.1); padding-top: 25px;">
                         <div v-for="slot in partialSlots" :key="slot.id" :class="['equip-slot', slot.id, { 'active': activeSlot === slot.id }]">
-                            <div class="slot-label">{{ slot.name }}</div>
-                            <div class="slot-card" @click="activeSlot = (activeSlot === slot.id ? null : slot.id)">
+                            <div class="slot-label" 
+                                 :class="getRarityClass(selectedEquip[slot.id], slot.id)"
+                                 @click="cycleQuality(slot.id)"
+                                 style="cursor: pointer;">
+                                 {{ slot.name }}
+                                 <i class="fas fa-sync-alt" :style="{ transform: 'rotate(' + (slotRotations[slot.id] || 0) + 'deg)' }"></i>
+                             </div>
+                            <div class="slot-card" 
+                                 :class="getRarityClass(selectedEquip[slot.id], slot.id)"
+                                 @click="handleSlotClick(slot)">
                                 <div class="slot-badge">6合神靈</div>
+                                
                                 <template v-if="selectedEquip[slot.id] && selectedEquip[slot.id].item">
-                                    <div class="full-equip-display">
+                                    <div class="full-equip-display" :class="getRarityClass(selectedEquip[slot.id], slot.id)">
                                         <img :src="'img/' + selectedEquip[slot.id].item.image" :alt="selectedEquip[slot.id].item.name" @error="$event.target.src = 'img/unknown.png'">
                                         <div class="slot-item-name">{{ selectedEquip[slot.id].item.name }}</div>
                                     </div>

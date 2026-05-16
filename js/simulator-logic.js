@@ -79,6 +79,11 @@ window.SimLogic = (() => {
                 maxSupportedQuality = Math.max(0, astData[item.name].effects.length - 1);
             }
 
+            // 如果是連鎖位 (_p)，品質直接由選定的索引決定
+            if (slotKey.endsWith('_p') && item.effectIdx !== undefined) {
+                return item.effectIdx;
+            }
+
             let q = (state.equipQuality && state.equipQuality[slotKey] !== undefined)
                 ? state.equipQuality[slotKey]
                 : maxSupportedQuality;
