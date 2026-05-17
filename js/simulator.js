@@ -782,6 +782,26 @@ const SimulatorComponent = {
                     selectedEquip.value['hunyu'] = remaining[0];
                 }
             }
+
+            // 4. 動態校正所有插槽的品質，確保不超過裝備支援的最高品質 (例如羽林套不支援金色)
+            standardSlots.forEach(slotId => {
+                const item = selectedEquip.value[slotId];
+                if (!item) return;
+                
+                const realItem = item.item ? item.item : item;
+                
+                // 判定該裝備支援的最高品質
+                let maxQ = 4;
+                if (realItem.name && astData.value[realItem.name] && astData.value[realItem.name].effects) {
+                    maxQ = Math.max(0, astData.value[realItem.name].effects.length - 1);
+                }
+                
+                // 如果目前插槽設定的品質大於最高品質限制，或尚未設定，自動校正為最高品質
+                let current = heroState.value.equipQuality[slotId];
+                if (current === undefined || current > maxQ) {
+                    heroState.value.equipQuality[slotId] = maxQ;
+                }
+            });
         };
 
         const getStablePool = (slotId, poolSource = STABLE_POOLS) => {
