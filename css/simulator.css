@@ -1880,3 +1880,35 @@
 .core-grid {
     margin: 8px 0 5px 0;
 }
+
+/* 手機版上方 3 按鈕：僅收合「分享配置」與「清除全部」的文字，雲端儲存按鈕完整顯示文字 */
+@media (max-width: 768px) {
+    .controls-top-bar {
+        justify-content: flex-start;
+        gap: 6px !important;
+        padding-left: 0;
+        margin-bottom: 8px;
+    }
+    
+    .controls-top-bar .action-btn {
+        justify-content: center;
+        padding: 8px 12px !important;
+        font-size: 0.9rem;
+        gap: 4px !important;
+        min-width: 0;
+        white-space: nowrap;
+        border-radius: 6px;
+    }
+
+    /* 收合分享按鈕的文字 */
+    .controls-top-bar .share-btn .btn-text {
+        display: none !important;
+    }
+}
+
+/* Simulator Build Provider Styling */
+.build-provider-group .provider-name {
+    color: #fff;
+    font-size: 1rem;
+    font-weight: bold;
+}

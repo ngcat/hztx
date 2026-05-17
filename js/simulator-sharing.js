@@ -319,16 +319,222 @@ window.SimSharing = (() => {
 
     const compress = (obj) => btoa(encodeURIComponent(JSON.stringify(obj)));
 
+    const saveToCloud = async (heroState, selectedEquip, STABLE_POOLS, getStablePool, currentBuildId = null) => {
+        const API_URL = window.APP_CONFIG.API_URL;
+        if (!API_URL) return alert('API URL 未配置');
+
+        const basicSlots = ['weapon', 'mount', 'book', 'treasure', 'token'];
+        const hasAllBasic = basicSlots.every(slot => selectedEquip[slot]);
+        if (!hasAllBasic) {
+            alert("儲存失敗：您必須配置滿 5 件核心裝備(神兵、坐騎、寶典、奇珍、令符)才能進行儲存");
+            return;
+        }
+
+        // 1. 取得 V2 分享代碼 (複用 shareConfig 邏輯)
+        const config = {
+            h: heroState.selectedHeroName,
+            s: (heroState.isAwakened ? 1 : 0) | (heroState.isReincarnated ? 2 : 0) | (heroState.isLieutenant ? 4 : 0),
+            st: [], sl: {}, e: {}, q: {}
+        };
+
+        Object.keys(heroState.combat).forEach(gName => {
+            Object.entries(heroState.combat[gName]).forEach(([k, v]) => {
+                if (v) config.st.push(k);
+            });
+        });
+
+        Object.keys(heroState.range).forEach(cap => {
+            Object.entries(heroState.range[cap]).forEach(([k, v]) => {
+                if (v > 0) config.sl[k] = v;
+            });
+        });
+
+        Object.entries(selectedEquip).forEach(([k, v]) => {
+            if (!v) return;
+            if (k.endsWith('_p')) config.e[k] = { n: v.item.name, i: v.effectIdx };
+            else config.e[k] = typeof v === 'string' ? v : v.name;
+            if (heroState.equipQuality[k] !== undefined) config.q[k] = heroState.equipQuality[k];
+        });
+
+        const shareCode = packConfigV2(config, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods, getStablePool);
+
+        // 2. ID 解析輔助方法 (依據目前 JSON 順序的 0-based ID)
+        const getHeroId = (rawName) => {
+            if (!rawName) return '';
+            const cleanName = String(rawName).replace(/^[神聖][·\.\s]/, '').trim();
+            const idx = STABLE_POOLS.heroes.findIndex(h => h.name === cleanName);
+            return idx !== -1 ? idx : '';
+        };
+
+        const getEquipId = (rawName) => {
+            if (!rawName) return '';
+            const cleanName = String(rawName).replace(/[\(\（\[\{].*[\)\）\]\}]/g, '').trim();
+            const idx = STABLE_POOLS.equips.findIndex(e => e.name === cleanName);
+            return idx !== -1 ? idx : '';
+        };
+
+        const getGodId = (rawName) => {
+            if (!rawName) return '';
+            const cleanName = String(rawName).replace(/[\(\（\[\{].*[\)\）\]\}]/g, '').trim();
+            const idx = STABLE_POOLS.gods.findIndex(g => g.name === cleanName);
+            return idx !== -1 ? idx : '';
+        };
+
+        // 3. 欄位格式化方法
+        const getEquipField = (slotId) => {
+            const v = selectedEquip[slotId];
+            if (!v) return '';
+            const name = typeof v === 'string' ? v : (v.name || v.n);
+            const eqId = getEquipId(name);
+            if (eqId === '') return '';
+            const q = heroState.equipQuality[slotId] !== undefined ? heroState.equipQuality[slotId] : 0;
+            return `${eqId}_${q}`;
+        };
+
+        const getLinkageField = (slotId) => {
+            const v = selectedEquip[slotId];
+            if (!v) return '';
+            const name = v.item?.name || v.n;
+            const eqId = getEquipId(name);
+            if (eqId === '') return '';
+            const effectIdx = v.effectIdx !== undefined ? v.effectIdx : (v.i !== undefined ? v.i : 0);
+            return `${eqId}_${effectIdx}`;
+        };
+
+        const provider = prompt("即將存入配裝展示\n請輸入作者名稱(10字內)：");
+        if (provider === null) return; // 使用者按取消
+        const cleanProvider = provider.trim();
+        if (!cleanProvider) {
+            alert("儲存失敗：作者名稱不可為空！");
+            return;
+        }
+        if (cleanProvider.length > 10) {
+            alert("儲存失敗：作者名稱長度不可超過 10 個字！");
+            return;
+        }
+
+        const isEdit = currentBuildId && parseInt(currentBuildId, 10) >= 2;
+        const passwordPromptText = isEdit
+            ? `正在編輯配置(ID: ${currentBuildId})\n請輸入原密碼以驗證並更新(不可為空)：`
+            : "請輸入此配置的新密碼(日後編輯認證使用，不可為空)：";
+        const password = prompt(passwordPromptText);
+        if (password === null) return; // 使用者按取消
+        const cleanPassword = password.trim();
+        if (!cleanPassword) {
+            alert("儲存失敗：密碼不可為空！");
+            return;
+        }
+
+        // 新建配置時，增加重複輸入密碼的確認流程以防打錯
+        if (!isEdit) {
+            const passwordConfirm = prompt("請再次輸入密碼以進行確認：");
+            if (passwordConfirm === null) return; // 使用者按取消
+            if (passwordConfirm.trim() !== cleanPassword) {
+                alert("儲存失敗：兩次輸入的密碼不一致！");
+                return;
+            }
+        }
+
+        const payload = {
+            ID: isEdit ? parseInt(currentBuildId, 10) : '',
+            hero: getHeroId(heroState.selectedHeroName),
+            isAwakened: heroState.isAwakened,
+            isReincarnated: heroState.isReincarnated,
+            shareCode: shareCode,
+            weapon: getEquipField('weapon'),
+            mount: getEquipField('mount'),
+            book: getEquipField('book'),
+            treasure: getEquipField('treasure'),
+            token: getEquipField('token'),
+            hunyu: getEquipField('hunyu'),
+            rear_hero: getHeroId(selectedEquip.rear_hero),
+            front_hero: getHeroId(selectedEquip.front_hero),
+            god: selectedEquip.god ? getGodId(selectedEquip.god.name) : '',
+            weapon_p: getLinkageField('weapon_p'),
+            mount_p: getLinkageField('mount_p'),
+            book_p: getLinkageField('book_p'),
+            treasure_p: getLinkageField('treasure_p'),
+            token_p: getLinkageField('token_p'),
+            provider: cleanProvider,
+            password: cleanPassword
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload),
+                redirect: 'follow'
+            });
+            const resJson = await response.json();
+
+            if (resJson.status === 'success') {
+                alert(resJson.message || '儲存成功！');
+                return { ...resJson, provider: cleanProvider };
+            } else {
+                alert(resJson.message || '儲存失敗');
+                return resJson;
+            }
+        } catch (e) {
+            alert('儲存失敗，請檢查網路或 API 設定');
+            return { status: 'error', message: e.toString() };
+        }
+    };
+
+    const getBuilds = async () => {
+        const now = Date.now();
+        let cached = null;
+        try {
+            cached = localStorage.getItem('hztx_builds_cache');
+        } catch (e) {}
+        
+        let rawData;
+
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                if (now - parsed.timestamp < 600000) {
+                    rawData = parsed.data;
+                }
+            } catch (e) {
+                try {
+                    localStorage.removeItem('hztx_builds_cache');
+                } catch (err) {}
+            }
+        }
+
+        if (!rawData) {
+            const res = await fetch('https://raw.githubusercontent.com/ngcat/hztx-data/main/build.json?t=' + now);
+            rawData = await res.json();
+            try {
+                localStorage.setItem('hztx_builds_cache', JSON.stringify({
+                    timestamp: now,
+                    data: rawData
+                }));
+            } catch (e) {}
+        }
+        return rawData;
+    };
+
+    const clearBuildsCache = () => {
+        try {
+            localStorage.removeItem('hztx_builds_cache');
+        } catch (e) {}
+    };
+
     return {
         packConfigV2,
         unpackConfigV2,
         compress,
         decompress,
+        saveToCloud,
+        getBuilds,
+        clearBuildsCache,
         parseUrlParams() {
             const params = new URLSearchParams(window.location.search);
             const sim = params.get('sim');
             const legacy = params.get('c');
-            return { sim, legacy };
+            const id = params.get('id');
+            return { sim, legacy, id };
         }
     };
 })();

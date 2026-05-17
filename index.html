@@ -19,15 +19,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css?v=8b654ce3">
     <link rel="stylesheet" href="css/equipment-list.css?v=5e06f1a5">
-    <link rel="stylesheet" href="css/simulator.css?v=91267e82">
+    <link rel="stylesheet" href="css/simulator.css?v=867c6b81">
+    <link rel="stylesheet" href="css/build-list.css?v=4ca9d25f">
     <link rel="icon" href="img/equip02669a3dc.png" type="image/png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script>
-        // 資料版號控管中心
-        window.APP_CONFIG = {
-            DATA_VERSION: '202605151515' // 統一時間戳
-        };
-    </script>
+    <script src="js/config.js?v=74b74d5c"></script>
 </head>
 
 <body>
@@ -56,6 +52,11 @@
                     🧪 配裝模擬
                 </button>
 
+                <button class="sidebar-item" :class="{ active: currentCategory === 'builds' }"
+                    @click="selectCategory('builds')">
+                    📚 配裝展示
+                </button>
+
                 <div class="sidebar-divider"></div>
 
                 <!-- 免責聲明 -->
@@ -67,7 +68,7 @@
         </aside>
 
         <main class="main-content">
-            <div class="container" :class="{ 'full-width': currentCategory === 'sim' }">
+            <div class="container" :class="{ 'full-width': currentCategory === 'sim' || currentCategory === 'builds' }">
                 <div v-if="initError" class="loader" style="color: var(--primary-red)">
                     <p>軍報讀取失敗，請確認檔案路徑或伺服器狀態。</p>
                 </div>
@@ -79,33 +80,35 @@
                     </div>
 
                     <template v-else>
-                        <keep-alive>
-                            <div v-if="currentCategory === 'disclaimer'" :key="'disclaimer'"
-                                class="disclaimer-container">
-                                <div class="disclaimer-header">
-                                    <h1>免責聲明</h1>
-                                </div>
-                                <div class="disclaimer-content">
-                                    <p>歡迎訪問「皇者書院」（以下簡稱「本站」）。在您使用本站提供的資訊前，請務必仔細閱讀並透徹理解本聲明。</p>
-                                    <h2>一、 資訊來源與準確性</h2>
-                                    <p>1. 本站為非官方性質的數據研究與交流平台，所收錄之遊戲數據、圖片、文字等資訊，均來自於公開網路資訊或使用者提供。</p>
-                                    <p>2. 由於遊戲版本更新頻繁，本站無法保證所有資訊的即時性與絕對準確性。本站提供的資訊僅供參考，實際遊戲內容請以官方發布之最新版本為準。</p>
-                                    <h2>二、 知識產權說明</h2>
-                                    <p>1. 本站展示的所有遊戲相關素材之知識產權均歸原遊戲開發商與發行商所有。本站僅出於學習研究之目的使用，無意侵犯任何版權。</p>
-                                    <p>2. 如相關權利人認為本站內容侵犯其合法權益，請及時與我們聯繫，本站將配合刪除。</p>
-                                    <h2>三、 責任限制</h2>
-                                    <p>1. 本站對因使用本站資訊而產生的任何損失不承擔法律責任。對於不可抗力導致的服務中斷，本站不承擔賠償責任。</p>
-                                    <h2>四、 禁止商業用途</h2>
-                                    <p>本站內容嚴禁用於任何營利性或非法商業活動。違規使用產生的一切後果由使用者自行承擔。</p>
-                                </div>
+                        <div v-show="currentCategory === 'disclaimer'"
+                            class="disclaimer-container">
+                            <div class="disclaimer-header">
+                                <h1>免責聲明</h1>
                             </div>
+                            <div class="disclaimer-content">
+                                <p>歡迎訪問「皇者書院」（以下簡稱「本站」）。在您使用本站提供的資訊前，請務必仔細閱讀並透徹理解本聲明。</p>
+                                <h2>一、 資訊來源與準確性</h2>
+                                <p>1. 本站為非官方性質的數據研究與交流平台，所收錄之遊戲數據、圖片、文字等資訊，均來自於公開網路資訊或使用者提供。</p>
+                                <p>2. 由於遊戲版本更新頻繁，本站無法保證所有資訊的即時性與絕對準確性。本站提供的資訊僅供參考，實際遊戲內容請以官方發布之最新版本為準。</p>
+                                <h2>二、 知識產權說明</h2>
+                                <p>1. 本站展示的所有遊戲相關素材之知識產權均歸原遊戲開發商與發行商所有。本站僅出於學習研究之目的使用，無意侵犯任何版權。</p>
+                                <p>2. 如相關權利人認為本站內容侵犯其合法權益，請及時與我們聯繫，本站將配合刪除。</p>
+                                <h2>三、 責任限制</h2>
+                                <p>1. 本站對因使用本站資訊而產生的任何損失不承擔法律責任。對於不可抗力導致的服務中斷，本站不承擔賠償責任。</p>
+                                <h2>四、 禁止商業用途</h2>
+                                <p>本站內容嚴禁用於任何營利性或非法商業活動。違規使用產生的一切後果由使用者自行承擔。</p>
+                            </div>
+                        </div>
 
-                            <simulator-component v-else-if="currentCategory === 'sim'" :key="'sim'"
-                                :all-items="allItems"></simulator-component>
+                        <simulator-component v-show="currentCategory === 'sim'"
+                            :active="currentCategory === 'sim'"
+                            :all-items="allItems"></simulator-component>
 
-                            <equipment-list v-else :key="'equip'" :all-items="allItems"
-                                :category="currentCategory"></equipment-list>
-                        </keep-alive>
+                        <build-list-component v-show="currentCategory === 'builds'"
+                            :all-items="allItems"></build-list-component>
+
+                        <equipment-list v-show="currentCategory !== 'disclaimer' && currentCategory !== 'sim' && currentCategory !== 'builds'" :all-items="allItems"
+                            :category="currentCategory"></equipment-list>
                     </template>
                 </template>
             </div>
@@ -113,12 +116,13 @@
     </div>
 
     <script src="js/equipment-list.js?v=e016ed4e"></script>
-    <script src="js/simulator-logic.js?v=da05527a"></script>
-    <script src="js/simulator-sharing.js?v=0b40fff4"></script>
+    <script src="js/simulator-logic.js?v=eeecdb67"></script>
+    <script src="js/simulator-sharing.js?v=e7266abc"></script>
     <script src="js/simulator-popover.js?v=215f369d"></script>
     <script src="js/simulator-summary.js?v=c549eb4f"></script>
-    <script src="js/simulator.js?v=840415b7"></script>
-    <script src="js/app.js?v=39b46c80"></script>
+    <script src="js/build-list.js?v=56dc2f89"></script>
+    <script src="js/simulator.js?v=c18bb0df"></script>
+    <script src="js/app.js?v=f6f3b08f"></script>
 
 </body>
 

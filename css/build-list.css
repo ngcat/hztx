@@ -1,0 +1,664 @@
+.builds-container {
+    padding: 15px;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.builds-header {
+    margin-bottom: 25px;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    border-left: 4px solid var(--primary-gold);
+    padding-left: 15px;
+}
+
+.builds-header h1 {
+    color: var(--primary-gold);
+    margin: 0;
+    font-size: 1.4rem;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.header-refresh-hint {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: normal;
+    margin-left: 8px;
+}
+
+.builds-search-box {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+}
+
+.builds-search-box i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--primary-gold);
+    opacity: 0.6;
+}
+
+.builds-search-box input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    padding: 10px 15px 10px 40px;
+    color: white;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: all 0.3s;
+    backdrop-filter: blur(10px);
+}
+
+.builds-search-box input:focus {
+    border-color: var(--primary-gold);
+    background: rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+.builds-list {
+    background: rgba(25, 30, 35, 0.85);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 8px;
+    overflow-y: auto; /* 啟用垂直滾動，大數據時讓列表在容器內滾動 */
+    height: calc(100vh - 210px); /* 佔滿剩餘畫面高度，並保留適當間隔確保網頁整體不產生滾動條 */
+    min-height: 350px; /* 防止視口過矮時縮扁 */
+    -webkit-overflow-scrolling: touch; /* 行動端流暢滑動 */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+}
+
+/* 網頁滾動條美化 (Webkit) */
+.builds-list::-webkit-scrollbar {
+    width: 6px; /* 垂直滾動條寬度 */
+    height: 6px; /* 水平滾動條高度 */
+}
+.builds-list::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.35);
+    border-radius: 3px;
+}
+.builds-list::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.build-row {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+    padding: 12px 20px 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    transition: background-color 0.2s ease;
+    min-width: 772px; /* 保證四維與裝備不被拆散，強制維持一橫列對齊 */
+    cursor: pointer; /* 點擊整列載入配裝 */
+    position: relative;
+}
+
+.build-row:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.build-row:last-child {
+    border-bottom: none;
+}
+
+.build-row:hover {
+    background: rgba(212, 175, 55, 0.06);
+}
+
+.row-section {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.main-hero-section {
+    width: 72px;
+    flex-shrink: 0;
+}
+
+.hero-avatar {
+    width: 72px;
+    height: 72px;
+    border: 2px solid var(--primary-gold);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scale(1.45);
+    transform-origin: top center;
+    display: block;
+    transition: transform 0.3s ease;
+}
+
+.build-row:hover .hero-avatar img {
+    transform: scale(1.55);
+}
+
+.stats-section-expanded {
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 20px;
+    flex-shrink: 0;
+    width: 192px;
+    box-sizing: content-box;
+}
+
+.hero-flat-stats {
+    display: flex;
+    gap: 8px;
+}
+
+.flat-stat-item {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 6px 6px;
+    border-radius: 0;
+    font-size: 0.85rem;
+    border-bottom: 3px solid transparent;
+    min-width: 42px;
+    justify-content: center;
+}
+
+.flat-stat-item:nth-child(1) { border-color: #e74c3c; } /* 武 */
+.flat-stat-item:nth-child(2) { border-color: #3498db; } /* 智 */
+.flat-stat-item:nth-child(3) { border-color: #e84393; } /* 魅 */
+.flat-stat-item:nth-child(4) { border-color: #f39c12; } /* 統 */
+
+.flat-stat-item .stat-label {
+    color: rgba(255, 255, 255, 0.5);
+    margin-right: 6px;
+    font-weight: bold;
+    display: none; /* 預設在電腦版隱藏，因為頂部有四維標題列 */
+}
+
+.flat-stat-item .stat-val {
+    color: #fff;
+    font-weight: bold;
+}
+
+.stat-error-hint {
+    font-size: 0.7rem;
+    color: var(--primary-red);
+    text-align: center;
+    opacity: 0.8;
+}
+
+.slots-section {
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    padding-left: 20px;
+    flex-shrink: 0;
+}
+
+.slots-section.main-equips {
+    width: 248px;
+    box-sizing: content-box;
+}
+
+.slots-section.soul-jade {
+    width: 48px;
+    box-sizing: content-box;
+}
+
+.mini-slots {
+    display: flex;
+    gap: 2px;
+}
+
+.mini-slot {
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.mini-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.empty-mini {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.provider-badge {
+    position: absolute;
+    bottom: 5px;
+    left: 20px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-align: left;
+    margin-top: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: auto;
+    max-width: 250px;
+    line-height: 1.2;
+    transition: color 0.2s ease;
+}
+
+.build-row:hover .provider-badge {
+    color: var(--primary-gold);
+}
+
+.action-section {
+    margin-left: auto;
+    width: 64px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.row-load-btn {
+    padding: 4px 10px;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid var(--primary-gold);
+    color: var(--primary-gold);
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+}
+
+.row-load-btn:hover {
+    background: var(--primary-gold);
+    color: #0b0d0f;
+    box-shadow: 0 0 8px rgba(212, 175, 55, 0.4);
+}
+
+/* 列表頂部標題列樣式 */
+.builds-list-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 20px;
+    background: #0f1317; /* 採用實色深色背景以遮掩捲動過來的內容列 */
+    border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 0;
+    margin-bottom: 0;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+    user-select: none;
+    min-width: 772px; /* 與資料列同步，防手機端折行 */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.header-cell {
+    display: flex;
+    align-items: center;
+}
+
+.col-hero {
+    width: 72px;
+    justify-content: center;
+}
+
+.col-stats {
+    display: flex;
+    gap: 8px;
+    padding-left: 20px;
+    width: 192px;
+    box-sizing: content-box;
+    border-left: 1px solid transparent; /* 對齊每列左框線的寬度 */
+}
+
+.stat-header-cell {
+    width: 42px;
+    display: flex;
+    flex-direction: row; /* 水平排列，將排序圖標放在右邊 */
+    align-items: center;
+    justify-content: center;
+    gap: 1px; /* 緊湊微間距 */
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    transition: filter 0.2s ease, opacity 0.2s ease;
+}
+
+.stat-header-cell:hover {
+    filter: brightness(1.2);
+    opacity: 0.8;
+}
+
+.sort-arrow {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.25);
+    line-height: 1;
+    font-weight: normal;
+    display: inline-block;
+}
+
+.stat-header-cell.active-sort .sort-arrow {
+    color: var(--primary-gold) !important;
+    font-weight: bold;
+    text-shadow: 0 0 4px rgba(212, 175, 55, 0.6);
+}
+
+.red-text { color: #ff4d4d; }
+.blue-text { color: #3498db; }
+.pink-text { color: #ff79c6; }
+.orange-text { color: #ffb86c; }
+
+.col-equips {
+    padding-left: 20px;
+    width: 248px;
+    box-sizing: content-box;
+    border-left: 1px solid transparent;
+}
+
+.col-soul-jade {
+    padding-left: 20px;
+    width: 48px;
+    box-sizing: content-box;
+    border-left: 1px solid transparent;
+    justify-content: center;
+}
+
+.col-action {
+    margin-left: auto;
+    width: 64px;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    /* 手機版壓縮上方間距，鎖死整體頁面滾動，僅讓列表自行捲動 */
+    .main-content {
+        padding-top: 0.5rem !important;
+    }
+    
+    .builds-header {
+        margin-bottom: 12px !important;
+    }
+
+    .builds-header h1 {
+        font-size: 1.2rem;
+        flex-wrap: wrap;
+        gap: 4px;
+        white-space: normal;
+    }
+
+    .header-refresh-hint {
+        font-size: 0.7rem;
+        margin-left: 0;
+        opacity: 0.85;
+    }
+
+    .builds-container {
+        padding: 5px;
+    }
+    
+    .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .builds-search-box {
+        max-width: 100%;
+    }
+
+    /* 手機版啟用表頭，並使用與 row 相同的 Grid 欄位以達到完美對齊 */
+    .builds-list-header {
+        display: grid;
+        grid-template-columns: 54px auto auto 1fr;
+        gap: 10px 14px;
+        padding: 10px 12px;
+        background: #0f1317; /* 採用實色深色背景以遮掩捲動過來的內容列 */
+        border-bottom: 1.5px solid rgba(212, 175, 55, 0.35);
+        min-width: 0 !important;
+        margin-bottom: 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    /* 手機版表頭：僅保留四維屬性的標題，其餘（主將、裝備、魂玉、操作）文字隱藏，以保留極致版面 */
+    .col-hero,
+    .col-equips,
+    .col-soul-jade,
+    .col-action {
+        display: none !important;
+    }
+
+    .col-stats {
+        grid-column: 2 / span 3; /* 對齊到中間與右側欄位，精準座落在四維屬性藥丸上方 */
+        padding-left: 0 !important;
+        width: auto !important;
+        border-left: none !important;
+        gap: 4px; /* 對齊 row 的 hero-flat-stats 寬距 */
+        display: flex;
+    }
+
+    .col-stats .stat-header-cell {
+        width: 42px; /* 完美契合下面藥丸的 min-width 42px */
+        font-size: 0.75rem;
+    }
+
+    .builds-list {
+        background: rgba(25, 30, 35, 0.85);
+        border: 1px solid rgba(212, 175, 55, 0.25);
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        overflow-y: auto; /* 啟用垂直滾動 */
+        height: calc(100vh - 195px); /* 扣除已壓縮的頂部空間後，手機端完美佔滿且鎖死整體頁面滾動 */
+        display: flex;
+        flex-direction: column;
+        gap: 0; /* 回歸連續表格結構，避免破碎 */
+    }
+
+    .build-row {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0;
+        padding: 12px 8px 24px 8px;
+        min-width: 0 !important;
+        cursor: pointer;
+        
+        display: grid;
+        grid-template-columns: 54px auto auto 1fr auto; /* 1:頭像/提供者, 2:裝備, 3:魂玉, 4:彈性延伸, 5:載入按鈕 */
+        grid-template-rows: auto auto;
+        gap: 8px 8px;
+        align-items: center;
+    }
+
+    .build-row:nth-child(even) {
+        background: rgba(25, 30, 35, 0.2);
+    }
+
+    .build-row:last-child {
+        border-bottom: none;
+    }
+
+    .build-row:hover {
+        background: rgba(212, 175, 55, 0.04);
+    }
+
+    /* 各區塊指定 Grid 行與列位置，完美解決手機端重疊 bug */
+    .main-hero-section {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        width: 54px;
+        align-self: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .hero-avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 6px;
+    }
+
+    .stats-section-expanded {
+        grid-column: 2 / span 3;
+        grid-row: 1;
+        border-left: none !important;
+        padding-left: 0 !important;
+        width: auto !important;
+        box-sizing: border-box;
+    }
+
+    .hero-flat-stats {
+        display: flex;
+        gap: 4px;
+    }
+
+    .flat-stat-item {
+        min-width: 42px; /* 與標題寬度 42px 完美契合 */
+        padding: 4px 6px;
+        font-size: 0.75rem;
+    }
+
+    /* 頂部有全局屬性表頭，因此藥丸內部的小字標籤（武/智/魅/統）可以完全隱藏，保持絕佳簡潔性 */
+    .flat-stat-item .stat-label {
+        display: none !important;
+    }
+
+    /* 5件核心主裝備區 (精準座落於 Column 2) */
+    .slots-section.main-equips {
+        grid-column: 2;
+        grid-row: 2;
+        border-left: none !important;
+        padding-left: 0 !important;
+        width: auto !important;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    /* 魂玉區 (精準座落於 Column 3，緊貼五件核心裝備右側，靠左併攏) */
+    .slots-section.soul-jade {
+        grid-column: 3;
+        grid-row: 2;
+        border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+        padding-left: 6px !important;
+        margin-left: 0;
+        width: auto !important;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .mini-slots {
+        display: flex;
+        gap: 2px; /* 與桌面版一致，緊湊黏合 */
+    }
+
+    .mini-slot {
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+    }
+
+    /* 手機版提供者：靠底左下對齊，不換行，長度超長自動顯示點點點 */
+    .provider-badge {
+        position: absolute !important;
+        left: 8px !important;
+        bottom: 2px !important;
+        max-width: 150px !important;
+        font-size: 0.68rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* 手機版載入按鈕定位於最右側 */
+    .action-section {
+        grid-column: 5;
+        grid-row: 1;
+        width: auto !important;
+        display: flex;
+        justify-content: flex-end;
+        align-self: center;
+        margin-left: 0;
+        padding-right: 2px;
+    }
+}
+
+/* 最後更新時間絕對定位樣式 */
+.build-row {
+    position: relative;
+}
+
+.row-timestamp {
+    position: absolute;
+    bottom: 5px;
+    right: 20px;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: 'Roboto Mono', monospace;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.build-row:hover .row-timestamp {
+    color: var(--primary-gold);
+    opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+    .row-timestamp {
+        right: 8px;
+        bottom: 2px;
+        font-size: 0.68rem;
+    }
+}
+
+/* Progressive rendering sentinel & counter */
+.builds-sentinel {
+    height: 1px;
+    width: 100%;
+}
+
+.builds-count {
+    text-align: center;
+    padding: 1.5rem 0;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.85rem;
+    width: 100%;
+}

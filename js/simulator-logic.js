@@ -567,6 +567,83 @@ window.SimLogic = (() => {
         return totals;
     };
 
+    /**
+     * 從解碼後的 config 還原出完整計算所需的 heroState 結構
+     */
+    const restoreHeroState = (config, heroesPool) => {
+        const heroName = config.h;
+        const baseName = heroName ? heroName.replace(/^[神聖][·\.\s]/, '').trim() : '';
+        const hero = (heroesPool || []).find(h => h.name === baseName);
+
+        let heroClass = '無', heroIdentity = '無', heroGender = '男性', fullCategory = '';
+        if (hero) {
+            const categoryTags = (hero.category || '').split(' ').filter(t => t.trim());
+            const slots = [...categoryTags, hero.gender];
+            fullCategory = slots.join(' ');
+
+            if (slots.includes('武將')) heroClass = '武將';
+            else if (slots.includes('文官')) heroClass = '文官';
+            else if (slots.includes('全才')) heroClass = '全才';
+
+            const traits = ['傳奇', '國士', '巾幗', '名將', '良才'];
+            heroIdentity = traits.find(t => slots.includes(t)) || '無';
+            heroGender = hero.gender || '男性';
+        }
+
+        const status = config.s || 0;
+        // 統一使用全域的 STATES_CONFIG 進行深拷貝還原
+        const heroState = {
+            selectedHeroName: heroName,
+            class: heroClass,
+            identity: heroIdentity,
+            gender: heroGender,
+            fullCategory: fullCategory,
+            isAwakened: (status & 1) !== 0,
+            isReincarnated: (status & 2) !== 0,
+            isLieutenant: (status & 4) !== 0,
+            equipQuality: {
+                'weapon': 4,
+                'mount': 4,
+                'book': 4,
+                'treasure': 4,
+                'token': 4,
+                'hunyu': 3
+            },
+            ...JSON.parse(JSON.stringify(window.STATES_CONFIG))
+        };
+
+        // 還原品質
+        if (config.q) {
+            Object.entries(config.q).forEach(([k, v]) => {
+                heroState.equipQuality[k] = v;
+            });
+        }
+
+        // 還原戰鬥環境
+        if (config.st && Array.isArray(config.st)) {
+            config.st.forEach(keyName => {
+                for (const gName in heroState.combat) {
+                    if (heroState.combat[gName][keyName] !== undefined) {
+                        heroState.combat[gName][keyName] = true;
+                    }
+                }
+            });
+        }
+
+        // 還原技能等級
+        if (config.sl) {
+            Object.entries(config.sl).forEach(([sName, val]) => {
+                for (const cap in heroState.range) {
+                    if (heroState.range[cap][sName] !== undefined) {
+                        heroState.range[cap][sName] = val;
+                    }
+                }
+            });
+        }
+
+        return heroState;
+    };
+
     return {
         hasIdentityMatch,
         getHeroAst,
@@ -575,6 +652,7 @@ window.SimLogic = (() => {
         getHeroAndLieutSkillsSync,
         calculateTotalStats,
         checkAstCondition,
-        interpretEffectSync
+        interpretEffectSync,
+        restoreHeroState
     };
 })();

@@ -3,15 +3,13 @@
  */
 const SimulatorComponent = {
     components: { SimulatorPopover, SimulatorSummary },
-    props: ['allItems'],
+    props: ['allItems', 'active'],
     setup(props) {
         const { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated, toRef, nextTick } = Vue;
         const allItems = toRef(props, 'allItems');
 
-        // 用於控制 keep-alive 狀態下的全域 UI 顯示 (例如 Teleport 到的 body 的按鈕)
-        const isCompActive = ref(true);
-        onActivated(() => { isCompActive.value = true; });
-        onDeactivated(() => { isCompActive.value = false; });
+        // 用於控制 keep-alive / v-show 狀態下的全域 UI 顯示 (例如 Teleport 到的 body 的按鈕)
+        const isCompActive = computed(() => props.active);
 
         // --- 核心運算邏輯代理 (委派至 SimLogic) ---
         const getEquippedItemsSync = (config) => SimLogic.getEquippedItemsSync(config);
@@ -45,63 +43,15 @@ const SimulatorComponent = {
             'token_p': null
         });
 
-        const STATES_CONFIG = {
-            combat: {
-                '對戰環境': {
-                    '對宿敵': false,
-                    '國戰攻城': false,
-                    '國戰守城': false,
-                    '兵力小於對手': false,
-                    '我方有不良狀態': false,
-                    '敵方有不良狀態': false
-                }
-            },
-            range: {
-                30: {
-                    // 英雄
-                    '萬箭': 0, '武聖': 0, '無雙': 0, '離間': 0, '落雷': 0, '傾國': 0, '鼓舞': 0, '奇策': 0,
-                    '乾坤': 0, '金剛': 0, '悲歌': 0, '亂舞': 0, '業火': 0, '天命': 0, '福佑': 0, '巨象': 0,
-                    '攻心': 0, '衝陣': 0, '死鬥': 0, '槍王': 0, '幻術': 0, '龍怒': 0, '冰河': 0, '勾魂': 0,
-                    '聖甲': 0, '障毒': 0, '霸君': 0, '仙音': 0, '兩儀': 0, '四象': 0,
-                    // 步兵
-                    '盾牆': 0, '激戰': 0, '堅守': 0, '衝鋒': 0, '反擊': 0, '裂甲': 0, '陷陣': 0, '蓄勢': 0,
-                    '逆刃': 0, '警覺': 0, '投戟': 0, '戰壕': 0,
-                    // 騎兵
-                    '鐵蹄': 0, '奔襲': 0, '不屈': 0, '突擊': 0, '捨身': 0, '剛毅': 0, '合圍': 0, '切割': 0,
-                    '戮塵': 0, '騎胄': 0, '擲矛': 0, '逸跡': 0,
-                    // 方士
-                    '罡氣': 0, '蝕甲': 0, '疾風': 0, '地刺': 0, '咒印': 0, '鬼影': 0, '神光': 0, '血瞳': 0,
-                    '星隕': 0, '石膚': 0, '陷阱': 0,
-                    // 弓兵
-                    '強弩': 0, '閃避': 0, '回射': 0, '火箭': 0, '金汁': 0, '齊射': 0, '輪射': 0, '破空': 0,
-                    '焱雨': 0, '掩蔽': 0, '落月': 0,
-                    // 輔助
-                    '策略': 0, '暴烈': 0, '軍略': 0, '誘敵': 0, '增員': 0, '擴編': 0, '剛體': 0, '靈敏': 0,
-                    '狂骨': 0, '博聞': 0, '仁義': 0, '推演': 0, '殺意': 0, '株連': 0, '集智': 0, '退避': 0,
-                    '急救': 0, '無懈': 0, '遁甲': 0, '洞鑒': 0, '凶煞': 0, '折衝': 0, '重生': 0, '鷹視': 0,
-                    '復仇': 0, '細作': 0,
-                },
-                20: {
-                    // 內政
-                    '築城': 0, '行軍': 0, '富豪': 0, '農耕': 0, '尋礦': 0, '育林': 0, '口才': 0, '豪傑': 0, '商賈': 0,
-                    '統御類技能數量': 0
-                },
-                180: {
-                    '陣法等級總數': 0
-                },
-                11: {
-                    '勇武': 0, '才學': 0, '兵法': 0, '修養': 0, '騎兵高級技能數量': 0
-                },
-                100: {
-                    '兵力比例': 100
-                }
-            }
-        };
+        const STATES_CONFIG = window.STATES_CONFIG;
 
         const heroSearchQuery = ref('');
         const showHeroSearch = ref(false);
         const showAdvanced = ref(false);
         const activeHeroSlot = ref(null); // 'main', 'rear_hero', 'front_hero'
+        const currentBuildId = ref(null);
+        const currentBuildProvider = ref('');
+        const isSaving = ref(false);
 
         const heroState = ref({
             selectedHeroName: '關羽',
@@ -696,6 +646,13 @@ const SimulatorComponent = {
         const clearAllEquip = () => {
             Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
             resetQuality();
+            currentBuildId.value = null;
+            currentBuildProvider.value = '';
+            const url = new URL(window.location.href);
+            url.searchParams.delete('id');
+            url.searchParams.delete('sim');
+            url.searchParams.delete('c');
+            window.history.replaceState({}, '', url.toString());
         };
 
         const hasSelectedItems = computed(() => {
@@ -703,7 +660,10 @@ const SimulatorComponent = {
         });
 
         const handleUrlParams = () => {
-            const { sim, legacy } = SimSharing.parseUrlParams();
+            const { sim, legacy, id } = SimSharing.parseUrlParams();
+            if (id) {
+                currentBuildId.value = parseInt(id, 10);
+            }
             if (sim) {
                 try {
                     const config = SimSharing.unpackConfigV2(sim, STABLE_POOLS.heroes, STABLE_POOLS.equips, STABLE_POOLS.gods, getStablePool);
@@ -911,68 +871,13 @@ const SimulatorComponent = {
         const loadConfig = (config) => {
             if (!config) return;
 
-            // 1. 還原英雄
-            if (config.h) {
-                heroState.value.selectedHeroName = config.h;
-                updateHeroAttributes(config.h);
-            }
+            // 1. 使用統一的 SimLogic 還原完整的 heroState
+            heroState.value = SimLogic.restoreHeroState(config, STABLE_POOLS.heroes);
 
-            // 2. 統一根據 STATES_CONFIG 重置所有狀態為預設值
-            ['combat', 'range'].forEach(type => {
-                Object.entries(STATES_CONFIG[type]).forEach(([groupName, group]) => {
-                    Object.entries(group).forEach(([key, defaultVal]) => {
-                        if (heroState.value[type] && heroState.value[type][groupName]) {
-                            heroState.value[type][groupName][key] = defaultVal;
-                        }
-                    });
-                });
-            });
-
-            // 3. 還原基礎狀態標記
-            const status = config.s || 0;
-            heroState.value.isAwakened = (status & 1) !== 0;
-            heroState.value.isReincarnated = (status & 2) !== 0;
-            heroState.value.isLieutenant = (status & 4) !== 0;
-
-            // 4. 還原戰鬥環境開關
-            if (config.st) {
-                if (Array.isArray(config.st)) {
-                    // 稀疏陣列模式 (只存開啟的 Key)
-                    config.st.forEach(keyName => {
-                        for (const gName in heroState.value.combat) {
-                            if (heroState.value.combat[gName][keyName] !== undefined) {
-                                heroState.value.combat[gName][keyName] = true;
-                            }
-                        }
-                    });
-                } else {
-                    // 舊版物件模式相容
-                    heroState.value.combat = Object.assign({}, heroState.value.combat, config.st);
-                }
-            }
-
-            // 5. 還原技能等級
-
-            if (config.sl) {
-                Object.entries(config.sl).forEach(([sName, val]) => {
-                    for (const cap in heroState.value.range) {
-                        if (heroState.value.range[cap][sName] !== undefined) {
-                            heroState.value.range[cap][sName] = val;
-                        }
-                    }
-                });
-            }
-
+            // 2. 還原裝備
             if (config.e) {
                 Object.keys(selectedEquip.value).forEach(k => selectedEquip.value[k] = null);
                 Object.entries(config.e).forEach(([k, v]) => { selectedEquip.value[k] = v; });
-            }
-
-            // 6. 還原手動品質設定
-            if (config.q) {
-                Object.entries(config.q).forEach(([k, v]) => {
-                    heroState.value.equipQuality[k] = v;
-                });
             }
         };
 
@@ -1069,6 +974,30 @@ const SimulatorComponent = {
                     Utils.copyToClipboard(shareUrl).then(() => { alert('配置連結已複製到剪貼簿！'); }).catch(() => { window.prompt('複製失敗，請手動複製下方連結：', shareUrl); });
                 } catch (e) { alert('分享失敗，請稍後再試。'); }
             },
+            async saveToCloud() {
+                if (isSaving.value) return;
+                isSaving.value = true;
+                try {
+                    const res = await SimSharing.saveToCloud(heroState.value, selectedEquip.value, STABLE_POOLS, getStablePool, currentBuildId.value);
+                    if (res && res.status === 'success' && res.ID) {
+                        currentBuildId.value = res.ID;
+                        if (res.provider) {
+                            currentBuildProvider.value = res.provider;
+                        }
+                        // 儲存成功，清除快取以強迫重新抓取最新資料
+                        SimSharing.clearBuildsCache();
+                        // 同步更新 URL 中的 id 參數
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('id', res.ID);
+                        window.history.replaceState({}, '', url.toString());
+                    }
+                } finally {
+                    isSaving.value = false;
+                }
+            },
+            currentBuildId,
+            currentBuildProvider,
+            isSaving,
             isCompActive
         };
     },
@@ -1079,10 +1008,16 @@ const SimulatorComponent = {
                 <div class="simulator-controls">
                     <div class="controls-top-bar">
                         <button class="action-btn share-btn" @click="shareConfig">
-                            <i class="fas fa-share-alt"></i> 分享配置
+                            <i class="fas fa-share-alt"></i>
+                            <span class="btn-text">分享配置</span>
+                        </button>
+                        <button class="action-btn save-cloud-btn" @click="saveToCloud" :disabled="isSaving" style="background: var(--primary-gold); color: #000;">
+                            <i class="fas" :class="isSaving ? 'fa-spinner fa-spin' : 'fa-cloud-upload-alt'"></i>
+                            <span class="btn-text">{{ isSaving ? '儲存中...' : (currentBuildId ? '編輯配置 (ID: ' + currentBuildId + ')' : '配裝展示') }}</span>
                         </button>
                         <button class="action-btn clear-btn" @click="clearAllEquip" v-if="hasSelectedItems">
-                            <i class="fas fa-trash-alt"></i> 清除全部
+                            <i class="fas fa-trash-alt"></i>
+                            <span class="btn-text">清除全部</span>
                         </button>
                     </div>
                     <div class="control-row">

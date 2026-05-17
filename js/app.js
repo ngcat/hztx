@@ -72,7 +72,8 @@ window.DataManager = (() => {
 createApp({
     components: {
         'equipment-list': EquipmentListComponent,
-        'simulator-component': SimulatorComponent
+        'simulator-component': SimulatorComponent,
+        'build-list-component': BuildListComponent
     },
     setup() {
         // --- 基礎狀態 ---
@@ -142,6 +143,8 @@ createApp({
             if (urlParams.has('sim')) {
                 detectedPage = 'sim';
                 detectedQuery = urlParams.get('sim');
+            } else if (urlParams.has('builds')) {
+                detectedPage = 'builds';
             } else {
                 // 檢查是否有其他分類參數 (hero, weapon, horse 等)
                 for (const cat of categories.value) {
@@ -158,7 +161,8 @@ createApp({
             
             if (pageParam === 'sim' || (!pageParam && hasConfig)) {
                 currentCategory.value = 'sim';
-                // 網址標準化 (可選，如果你想保持網址列整齊)
+            } else if (pageParam === 'builds') {
+                currentCategory.value = 'builds';
             } else if (pageParam === 'disclaimer') {
                 currentCategory.value = 'disclaimer';
             } else if (pageParam === 'equip' || !pageParam) {
