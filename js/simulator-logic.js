@@ -11,16 +11,13 @@ window.SimLogic = (() => {
     };
 
     /**
-     * 判定身份匹配 (考慮全才等邏輯)
+     * 判定身份匹配
      */
     const hasIdentityMatch = (traits, requiredIds) => {
         if (!requiredIds || requiredIds.length === 0) return true;
         const traitSet = traits instanceof Set ? traits : new Set(traits);
 
-        return requiredIds.some(req => {
-            if (req === '全才') return traitSet.has('武將') && traitSet.has('文官');
-            return traitSet.has(req);
-        });
+        return requiredIds.some(req => traitSet.has(req));
     };
 
     /**

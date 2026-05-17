@@ -236,10 +236,7 @@ const SimulatorComponent = {
                 const isFate = fateHeroNames.has(baseName);
                 const slots = lAst ? (lAst.slot || []) : [];
                 const matchesAnyFate = Array.from(fateCategories).some(targetId => {
-                    if (slots.includes(targetId)) return true;
-                    if (targetId === '武將' && slots.includes('全才')) return true;
-                    if (targetId === '文官' && slots.includes('全才')) return true;
-                    return false;
+                    return slots.includes(targetId);
                 });
 
                 const isValidType = isHeroValidForLieutenant(lHero, slot);
