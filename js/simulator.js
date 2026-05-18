@@ -322,32 +322,24 @@ const SimulatorComponent = {
                     const ast = getHeroAst(baseName);
 
                     const isFate = fateHeroNames.has(h.name);
-                    const slots = ast ? (ast.slot || []) : [];
-                    const matchesAnyFate = hasIdentityMatch(slots, Array.from(fateCategories));
                     const isValidType = isHeroValidForLieutenant(h, activeHeroSlot.value);
 
-                    // 具備副將資格判定：有副將技資料 OR 是宿命對象
-                    const hasDeputyData = ast && (
-                        (ast.as_deputy && ast.as_deputy.length > 0) ||
-                        (ast.as_deputy_awaken && ast.as_deputy_awaken.length > 0) ||
-                        (ast.as_deputy_awaken2 && ast.as_deputy_awaken2.length > 0)
-                    );
-
-                    if (!hasDeputyData && !isFate) return;
-
-                    // A. 原版英雄：(是宿命對象) OR (符合軍種條件 且 (符合類別宿命 或 有普通副將技))
-                    if (isFate || (isValidType && (matchesAnyFate || (ast && ast.as_deputy && ast.as_deputy.length > 0)))) {
-                        finalHeroList.push(h);
+                    // A. 原版英雄：(是宿命對象) OR 符合軍種條件
+                    if (isFate || isValidType) {
+                        const priority = isFate ? 1 : ((ast && ast.slot && ast.slot.includes('any')) ? 2 : 4);
+                        finalHeroList.push({ ...h, priority });
                     }
 
                     // B. 「神·」版本：AST中有覺醒副將技 (需符合軍種)
-                    if (isValidType && ast.as_deputy_awaken && ast.as_deputy_awaken.length > 0) {
-                        finalHeroList.push({ ...h, name: '神·' + h.name, isDivine: true });
+                    if (isValidType && ast && ast.as_deputy_awaken && ast.as_deputy_awaken.length > 0) {
+                        const priority = (ast.slot && ast.slot.includes('any')) ? 2 : 3;
+                        finalHeroList.push({ ...h, name: '神·' + h.name, isDivine: true, priority });
                     }
 
                     // C. 「聖·」版本：AST中有聖覺醒副將技 (需符合軍種)
-                    if (isValidType && ast.as_deputy_awaken2 && ast.as_deputy_awaken2.length > 0) {
-                        finalHeroList.push({ ...h, name: '聖·' + h.name, isSaint: true });
+                    if (isValidType && ast && ast.as_deputy_awaken2 && ast.as_deputy_awaken2.length > 0) {
+                        const priority = (ast.slot && ast.slot.includes('any')) ? 2 : 3;
+                        finalHeroList.push({ ...h, name: '聖·' + h.name, isSaint: true, priority });
                     }
 
                 });
@@ -376,6 +368,9 @@ const SimulatorComponent = {
                 list.sort((a, b) => b._sortBonus - a._sortBonus);
             } else {
                 list.forEach(h => h._sortBonus = 0);
+                if (activeHeroSlot.value === 'rear_hero' || activeHeroSlot.value === 'front_hero') {
+                    list.sort((a, b) => (a.priority || 4) - (b.priority || 4));
+                }
             }
 
             return list;
