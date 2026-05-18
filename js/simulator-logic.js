@@ -175,7 +175,7 @@ window.SimLogic = (() => {
 
         if (mainAst && mainAst.fates) {
             mainAst.fates.forEach(fate => {
-                if (fate.cond && fate.cond.heroes && fate.cond.heroes.length > 0) {
+                if (fate.cond) {
                     const skillData = { text: fate.raw, source: mainName, astEntry: fate };
                     result.hero_fate.push(skillData);
                     result.hero_calculation_skills.push(skillData);
@@ -228,7 +228,8 @@ window.SimLogic = (() => {
                 }
             }
             if (isActive && cond.identity && cond.identity.length > 0) {
-                if (!hasIdentityMatch(wearerTraits, cond.identity)) isActive = false;
+                const targetTraits = (!context.isItem && !context.isDeputy) ? (context.deputyTraits || new Set()) : wearerTraits;
+                if (!hasIdentityMatch(targetTraits, cond.identity)) isActive = false;
             }
             if (isActive && cond.unit && cond.unit.length > 0) {
                 if (!cond.unit.some(u => wearerTraits.has(u))) isActive = false;
@@ -349,7 +350,7 @@ window.SimLogic = (() => {
                         if (req.mode === 'multiplier') {
                             // 倍率模式：累加級數
                             hasMultiplier = true;
-                            rangeMultiplierSum += Math.floor(level / (req.count || 1));
+                            rangeMultiplierSum += Math.floor(level / (req.val || req.count || 1));
                         } else if (req.op) {
                             // 運算子模式：AND 判定
                             const val = req.val;
