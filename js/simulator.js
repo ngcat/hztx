@@ -887,13 +887,16 @@ const SimulatorComponent = {
             // 初始化品質預設值
             resetQuality();
 
-            // 瀏覽器關閉/重新整理提醒
-            window.addEventListener('beforeunload', (e) => {
-                if (window.isSimulatorDirty) {
-                    e.preventDefault();
-                    e.returnValue = '';
-                }
-            });
+            // 瀏覽器關閉/重新整理提醒 (防禦 LINE 內建瀏覽器死鎖，僅在非 LINE 環境啟用)
+            const isLine = /Line/i.test(navigator.userAgent);
+            if (!isLine) {
+                window.addEventListener('beforeunload', (e) => {
+                    if (window.isSimulatorDirty) {
+                        e.preventDefault();
+                        e.returnValue = '';
+                    }
+                });
+            }
 
 
         });
