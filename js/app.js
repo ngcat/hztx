@@ -62,6 +62,9 @@ window.DataManager = (() => {
                 cache[url] = data;
                 delete pending[url];
                 return JSON.parse(JSON.stringify(data)); 
+            }).catch(err => {
+                delete pending[url]; // 發生錯誤時必須清除 pending 快取，避免永久鎖死
+                throw err;
             });
 
             return pending[url];
