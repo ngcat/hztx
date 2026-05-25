@@ -36,7 +36,7 @@ const EquipmentListComponent = {
                             <option value="ALL">開放時機</option>
                             <option v-for="r in uniqueReleases" :key="r" :value="r">{{ formatRelease(r) }}</option>
                         </select>
-                        <select v-if="category !== 'scheme' && category !== 'puppet'" class="merge-select" v-model="sourceFilter">
+                        <select v-if="category !== 'scheme' && category !== 'puppet' && category !== 'reincarnation'" class="merge-select" v-model="sourceFilter">
                             <option value="ALL">取得來源</option>
                             <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
                         </select>
@@ -56,7 +56,7 @@ const EquipmentListComponent = {
 
             <div class="gallery">
                 <div v-for="(item, index) in visibleItems" :key="item.name + '-' + index" 
-                    :class="['card', { 'hero-card': item.group === 'hero' }]" @click="selectedItem = item">
+                    :class="['card', { 'hero-card': item.group === 'hero' || item.group === 'reincarnation' }]" @click="selectedItem = item">
                     <div :class="['tag', item.group === 'army' ? 'tag-army' : 'tag-' + getCardTag(item)]">{{ getCardTag(item) }}</div>
                     <div class="release-tag" v-if="item.release !== undefined">{{ formatRelease(item.release) }}</div>
                     <div class="source-tag" v-if="item.source && (Array.isArray(item.source) ? item.source.length : item.source)">
@@ -64,10 +64,10 @@ const EquipmentListComponent = {
                             {{ formatBitmask(s) }}{{ sidx < (Array.isArray(item.source) ? item.source.length : 1) - 1 ? ' / ' : '' }}
                         </span>
                     </div>
-                    <div class="card-img-container" :class="{'silhouette-bg': item.group === 'hero' && !item.image}">
-                        <img :src="item.image ? 'img/' + item.image : (item.group === 'hero' ? 'img/hero709770614.png' : 'img/unknown.png')" 
+                    <div class="card-img-container" :class="{'silhouette-bg': (item.group === 'hero' || item.group === 'reincarnation') && !item.image}">
+                        <img :src="item.image ? 'img/' + item.image : ((item.group === 'hero' || item.group === 'reincarnation') ? 'img/hero709770614.png' : 'img/unknown.png')" 
                             :alt="item.name" loading="lazy"
-                            :class="{'hero-img': item.group === 'hero', 'grayscale-img': item.group === 'hero' && !item.image}">
+                            :class="{'hero-img': item.group === 'hero' || item.group === 'reincarnation', 'grayscale-img': (item.group === 'hero' || item.group === 'reincarnation') && !item.image}">
                     </div>
                     <div class="card-info">
                         <div class="card-name">{{ item.name }}</div>
@@ -362,6 +362,7 @@ const EquipmentListComponent = {
             if (cats.includes('巾幗')) return '巾幗';
             if (cats.includes('名將')) return '名將';
             if (cats.includes('傳奇')) return '傳奇';
+            if (item.group === 'reincarnation') return '輪迴塔';
             if (item.group === 'equip') return '裝備';
             if (item.group === 'god') return '神靈';
             if (item.group === 'scheme') return '戰計';

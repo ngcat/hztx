@@ -105,6 +105,15 @@ createApp({
                                     effects: []
                                 };
                             }
+                            if (cat.id === 'reincarnation') {
+                                const effects = [];
+                                if (val.cost0 && val.cost0.length) effects.push(`${val.cost0.join('、')}`);
+                                if (val.cost1 && val.cost1.length) effects.push(`${val.cost1.join('、')}`);
+                                if (val.cost2 && val.cost2.length) effects.push(`${val.cost2.join('、')}`);
+                                if (val.cost3 && val.cost3.length) effects.push(`${val.cost3.join('、')}`);
+                                if (val.cost4 && val.cost4.length) effects.push(`${val.cost4.join('、')}`);
+                                val.effects = effects;
+                            }
                             return { ...val, group: cat.id, effects: val.effects || [] };
                         });
                     } catch (e) {
