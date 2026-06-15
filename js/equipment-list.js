@@ -169,6 +169,40 @@ const EquipmentListComponent = {
                                 </div>
 
                                 <div class="hero-scroll-area">
+                                    <div v-if="selectedItem.attr && selectedItem.attr.length" class="hero-section">
+                                        <div class="hero-section-title">基礎四維</div>
+                                        <div class="stat-bars">
+                                            <div class="stat-row">
+                                                <span class="stat-label">武力</span>
+                                                <div class="stat-bar-bg">
+                                                    <div class="stat-bar str" :style="{ width: (selectedItem.attr[0] || 0) + '%' }"></div>
+                                                </div>
+                                                <span class="stat-val">{{ selectedItem.attr[0] }}</span>
+                                            </div>
+                                            <div class="stat-row">
+                                                <span class="stat-label">智力</span>
+                                                <div class="stat-bar-bg">
+                                                    <div class="stat-bar int" :style="{ width: (selectedItem.attr[1] || 0) + '%' }"></div>
+                                                </div>
+                                                <span class="stat-val">{{ selectedItem.attr[1] }}</span>
+                                            </div>
+                                            <div class="stat-row">
+                                                <span class="stat-label">魅力</span>
+                                                <div class="stat-bar-bg">
+                                                    <div class="stat-bar cha" :style="{ width: (selectedItem.attr[2] || 0) + '%' }"></div>
+                                                </div>
+                                                <span class="stat-val">{{ selectedItem.attr[2] }}</span>
+                                            </div>
+                                            <div class="stat-row">
+                                                <span class="stat-label">統御</span>
+                                                <div class="stat-bar-bg">
+                                                    <div class="stat-bar lead" :style="{ width: (selectedItem.attr[3] || 0) + '%' }"></div>
+                                                </div>
+                                                <span class="stat-val">{{ selectedItem.attr[3] }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div v-if="selectedItem.talents && selectedItem.talents.length" class="hero-section">
                                         <div class="hero-section-title talent-title">天賦【{{ selectedItem.talent_name }}】</div>
                                         <div class="hero-section-text">
