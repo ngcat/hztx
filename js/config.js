@@ -6,7 +6,7 @@ window.APP_CONFIG = Object.assign(window.APP_CONFIG || {}, {
     API_URL: 'https://script.google.com/macros/s/AKfycbzqqYUmvm8KFjx_2dDcfuBc2s5DQVnLk5zGVPij45vlYeZw2zVz4nMu13vyIhxldFDq/exec',
     
     // 資料版本 (供快取控管)
-    DATA_VERSION: '20260615717'
+    DATA_VERSION: 'fa529ee9e52'
 });
 
 window.STATES_CONFIG = {
