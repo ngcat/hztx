@@ -634,6 +634,7 @@
     color: #ccc;
     font-size: 0.85rem;
     line-height: 1.4;
+    white-space: pre-wrap;
 }
 
 .awakening-text {
