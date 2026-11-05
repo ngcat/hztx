@@ -410,7 +410,7 @@ const EquipmentListComponent = {
                 return val.map(v => formatRelease(v)).join(' / ');
             }
             if (val === 0 || val === '0') return '開服';
-            if (val >= 1 && val <= 8) return val + '合';
+            if (val >= 1) return val + '合';
             return val;
         };
 
