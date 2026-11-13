@@ -41,7 +41,7 @@ const EquipmentListComponent = {
                             <option v-for="src in uniqueSources" :key="src" :value="src">{{ src }}</option>
                         </select>
                         <select v-if="category === 'hero'" class="merge-select" v-model="upgradeFilter">
-                            <option value="ALL">覺醒</option>
+                            <option value="ALL">覺醒方式</option>
                             <option value="NONE">沒有覺醒</option>
                             <option v-for="up in uniqueUpgrades" :key="up" :value="up">{{ up }}</option>
                         </select>
@@ -416,7 +416,7 @@ const EquipmentListComponent = {
 
         const formatBitmask = (str) => {
             if (typeof str !== 'string') return str;
-            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '英雄塚'];
+            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '英雄塚', '玉璜福地'];
             let prefix = '';
             let maskStr = '';
 
@@ -537,7 +537,7 @@ const EquipmentListComponent = {
 
         const uniqueUpgrades = computed(() => {
             const upSet = new Set();
-            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+            const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '玉璜福地'];
             const foundPrefixes = new Set();
 
             const list = props.allItems.filter(item => item.group === 'hero');
@@ -563,7 +563,7 @@ const EquipmentListComponent = {
             const result = [...upSet].sort((a, b) => a.localeCompare(b, 'zh-TW'));
             // 將 Bitmask 類別排在最前面
             const sortedPrefixes = [...foundPrefixes].sort((a, b) => {
-                const order = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+                const order = ['洞窟仙人', '紫氣東來', '三國秘藏', '玉璜福地'];
                 return order.indexOf(a) - order.indexOf(b);
             });
             sortedPrefixes.reverse().forEach(p => result.unshift(p));
@@ -653,7 +653,7 @@ const EquipmentListComponent = {
                         return !item.upgrade || (Array.isArray(item.upgrade) && item.upgrade.length === 0);
                     }
                     const upgrades = Array.isArray(item.upgrade) ? item.upgrade : [item.upgrade];
-                    const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏'];
+                    const bitmaskPrefixes = ['洞窟仙人', '紫氣東來', '三國秘藏', '玉璜福地'];
                     if (bitmaskPrefixes.includes(upgradeFilter.value)) {
                         return upgrades.some(u => u.startsWith(upgradeFilter.value + '_'));
                     }
