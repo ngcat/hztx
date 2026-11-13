@@ -78,7 +78,7 @@ const EquipmentListComponent = {
                                 return t !== getCardTag(item) && t !== '前軍' && t !== '後軍' && t !== '全軍';
                             })" :key="c" class="mini-tag">{{ c }}</span>
                             <span v-for="s in (item.sets ? item.sets.split(' ') : [])" :key="s" class="mini-tag">{{ s }}</span>
-                            <span v-for="t in (item.tags || [])" :key="t" class="mini-tag upgrade-mini-tag" v-if="t === '可升級'">{{ t }}</span>
+                            <span v-for="t in (item.tags || [])" :key="t" class="mini-tag upgrade-mini-tag" v-if="t === '可升級' || t === '可精煉'">{{ t }}</span>
                             <span v-for="t in (item.tags || [])" :key="t" class="mini-tag" v-else>{{ t }}</span>
                             <span v-for="u in (item.upgrade || [])" :key="u" class="mini-tag cave-mini-tag" v-if="typeof u === 'string' && (u.includes('_'))">{{ formatBitmask(u) }}</span>
                         </div>
@@ -325,7 +325,7 @@ const EquipmentListComponent = {
                                                 <span v-for="s in (selectedItem.sets ? selectedItem.sets.split(' ') : [])" :key="s" class="mini-tag"
                                                     style="font-size: 0.8rem; padding: 2px 8px;">{{ s }}</span>
                                                 <span v-for="t in (selectedItem.tags || [])" :key="t" class="mini-tag"
-                                                    :class="{'upgrade-mini-tag': t === '可升級'}"
+                                                    :class="{'upgrade-mini-tag': t === '可升級' || t === '可精煉'}"
                                                     style="font-size: 0.8rem; padding: 2px 8px;">{{ t }}</span>
                                             </div>
                                         </div>
@@ -339,7 +339,7 @@ const EquipmentListComponent = {
                                     <ul class="effects-list">
                                         <li v-for="(eff, idx) in selectedItem.effects" :key="idx" class="effect-item">
                                             <div v-if="selectedItem.upgrade && selectedItem.upgrade.includes(idx)" class="upgrade-tag">
-                                                {{ Array.isArray(selectedItem.release) ? selectedItem.release[1] : '' }}合開放
+                                                {{ selectedItem.tags && selectedItem.tags.includes('可精煉') ? '可精煉' : (Array.isArray(selectedItem.release) ? selectedItem.release[1] + '合開放' : '升級開放') }}
                                             </div>
                                             {{ eff }}
                                         </li>
